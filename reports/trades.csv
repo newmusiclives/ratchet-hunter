@@ -1,3 +1,2 @@
 ticker,company,engine,shares,price_paid,cost,payout_price,opened,closed,proceeds,pnl,status,tender_status,expiration,url,note
-SSTI,"SOUNDTHINKING, INC.",takeover,206,8.34,1718.04,10.5,2026-11-07,,,,open,assumed,2026-11-17,https://www.sec.gov/Archives/edgar/data/1351636/000114036126040176/ny20082824x1_exa1a.htm,
 ULBI,ULTRALIFE CORP,takeover,255,15.66,3993.3,18.0,2026-11-07,,,,open,assumed,2026-12-03,https://www.sec.gov/Archives/edgar/data/875657/000119312526435071/d153599dex99a1d.htm,
