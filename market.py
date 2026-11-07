@@ -7,8 +7,23 @@ import requests
 UA = {"User-Agent": "Mozilla/5.0 RatchetHunter/1.0"}
 
 
+def _eodhd_key():
+    import os
+    return os.environ.get("PRICE_API_KEY") if os.environ.get("PRICE_PROVIDER", "").lower() == "eodhd" else None
+
+
+def _eodhd_last(ticker):
+    key = _eodhd_key()
+    if not key or ticker.startswith("^"):
+        return None
+    r = requests.get(f"https://eodhd.com/api/real-time/{ticker}.US", params={"api_token": key, "fmt": "json"}, timeout=20)
+    r.raise_for_status()
+    j = r.json()
+    return float(j.get("close") or j.get("previousClose") or 0) or None
+
+
 def last_price(ticker):
-    for fn in (_yahoo, _stooq):
+    for fn in (_eodhd_last, _yahoo, _stooq):
         try:
             p = fn(ticker)
             if p and p > 0:
@@ -35,8 +50,21 @@ def _stooq(ticker):
 
 
 def history(ticker, start, end):
-    """Daily closes {YYYY-MM-DD: close} between two dates. Yahoo first, Stooq as backup."""
+    """Daily closes {YYYY-MM-DD: close} between two dates.
+    With PRICE_PROVIDER=eodhd and PRICE_API_KEY set, uses EODHD first, which keeps the
+    history of delisted (bought-out) companies, so takeovers and mergers can be backtested."""
     import datetime as dt
+    key = _eodhd_key()
+    if key and not ticker.startswith("^"):
+        try:
+            r = requests.get(f"https://eodhd.com/api/eod/{ticker}.US", timeout=30,
+                             params={"api_token": key, "fmt": "json", "from": start.isoformat(), "to": end.isoformat()})
+            r.raise_for_status()
+            out = {row["date"]: float(row["close"]) for row in r.json() if row.get("close")}
+            if out:
+                return out
+        except Exception:
+            pass
     try:
         p1 = int(dt.datetime.combine(start, dt.time()).timestamp())
         p2 = int(dt.datetime.combine(end + dt.timedelta(days=1), dt.time()).timestamp())

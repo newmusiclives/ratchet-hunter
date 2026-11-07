@@ -203,6 +203,27 @@ def test_weekly_letter_and_monthly_review():
         assert "This week's letter" in page
 
 
+def test_master_switch_keeps_live_setup_on_paper():
+    c = hunter.load_cfg()
+    c.update(broker_mode="assisted", trading_enabled=False)
+    notes = []
+    assert hunter.make_broker(c, notes) is None and "switched OFF" in notes[0]
+    c["trading_enabled"] = True
+    assert hunter.make_broker(c, []).real_account
+
+
+def test_multiple_accounts_each_get_their_own_record():
+    with tempfile.TemporaryDirectory() as tmp:
+        c = cfg(tmp)
+        c["accounts"] = [{"name": "alex"}, {"name": "sam", "excluded_tickers": ["ALDR"]}]
+        hunter.HOOKS.update(alerts=None, broker=None)
+        res = hunter.run_accounts(c, offline=str(FIX), today=dt.date(2026, 11, 9))
+        a, b = ({p["ticker"] for p in led.open_positions()} for led, _ in res)
+        assert "ALDR" in a and "ALDR" not in b
+        assert (Path(tmp) / "reports" / "alex" / "latest.html").exists()
+        assert (Path(tmp) / "data" / "sam" / "paper_offline.db").exists()
+
+
 if __name__ == "__main__":
     for name, fn in list(globals().items()):
         if name.startswith("test_"):

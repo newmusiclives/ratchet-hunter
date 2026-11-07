@@ -96,6 +96,10 @@ def write(led, cfg, equity, notes, interest, lift, outdir, title=None, filename=
               if lt else "")
     NAV = ("<p class='nav'><a href='index.html'>Live paper run</a> &middot; <a href='backtest.html'>12-month backtest</a> &middot; <a href='dials.html'>Dials</a></p>"
            if os.environ.get("HUNTER_SITE") else "")
+    live_mode = cfg.get("broker_mode", "simulated") != "simulated"
+    MODE = ("" if not live_mode else
+            f"<p class='banner' style='margin:0 0 12px'><b>{'LIVE ACCOUNT: real-money trading is ON' if cfg.get('trading_enabled') else 'LIVE ACCOUNT, still on paper: real-money trading is switched OFF'}</b>"
+            f" &middot; broker: {e(cfg.get('broker_name', ''))} ({e(cfg.get('broker_mode'))})</p>")
     page = f"""<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>The Ratchet - Hunter - {e(title or str(led.today))}</title>
@@ -114,7 +118,7 @@ ul{{font-family:system-ui,sans-serif;font-size:13px;padding-left:18px}} a{{color
 .nav{{font-family:system-ui,sans-serif;font-size:13px;margin:0 0 14px}}
 .banner{{background:#fff4e5;border:1px solid #f0d9b5;border-radius:8px;padding:10px 14px;font-family:system-ui,sans-serif;font-size:13px}}
 </style></head><body>
-{NAV}<h1>The Ratchet &middot; Hunter</h1>
+{NAV}{MODE}<h1>The Ratchet &middot; Hunter</h1>
 <p class="sub">{e(title) + ' &middot; ' if title else ''}Paper trading report for {led.today} &middot; day {days} &middot; no real money is used</p>
 <div class="tiles">
  <div class="tile"><div class="k">Account value</div><div class="v">{money(equity)}</div></div>

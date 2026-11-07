@@ -347,6 +347,17 @@ def evaluate(led, src, cfg, rec, notes):
     if not takeover and cut and cut < led.today:
         return "skip", f"odd-lot priority only for shareholders who already owned shares on {cut}"
     if not terms["cash_offer"]:
+        if terms["odd_lot_priority"] and HOOKS["alerts"] and cfg.get("flag_share_swaps", True):
+            try:
+                ref = HOOKS["alerts"].open(f"Share-swap odd-lot offer spotted: {t}",
+                                           f"**{rec.get('company', '')} ({t})** has an exchange offer with odd-lot priority. "
+                                           f"The Hunter doesn't trade these automatically yet (it would need to value the shares you "
+                                           f"receive), but they can be profitable for holders of fewer than 100 shares.\n\n"
+                                           f"Filing: {rec.get('url', '')}", labels=("hunter", "share-swap"))
+                HOOKS["alerts"].close(ref)
+            except Exception as e:
+                notes.append(f"Could not send share-swap alert: {e}")
+            return "flag", "share-swap offer with odd-lot priority: alert sent, not traded automatically"
         return "skip", "share-exchange offer (v1 handles cash only)"
     if not takeover and not terms["odd_lot_priority"]:
         return "skip", "no clear odd-lot priority"
@@ -578,12 +589,31 @@ def make_broker(cfg, notes):
     mode = cfg.get("broker_mode", "simulated")
     if mode == "simulated":
         return None
+    if not cfg.get("trading_enabled", False):
+        notes.append(f"Real-money trading is switched OFF (trading_enabled is false): running on paper. Broker set up: {mode}.")
+        return None
     try:
         from broker import connect
         return connect(cfg)
     except Exception as e:
         notes.append(f"Broker not connected ({mode}): {e}. Running on paper only.")
         return None
+
+
+def run_accounts(cfg, offline=None, today=None):
+    """Run once per account in cfg["accounts"] (each with its own ledger, reports and settings)."""
+    accounts = cfg.get("accounts") or [{"name": ""}]
+    results = []
+    for acc in accounts:
+        c = {k: v for k, v in cfg.items() if k != "accounts"}
+        c.update({k: v for k, v in acc.items() if k != "name"})
+        name = acc.get("name", "")
+        if name:
+            c["data_dir"] = str(Path(cfg["data_dir"]) / name)
+            c["report_dir"] = str(Path(cfg["report_dir"]) / name)
+            print(f"== account: {name}")
+        results.append(run(c, offline, today))
+    return results
 
 
 def main():
@@ -596,7 +626,7 @@ def main():
     cfg = load_cfg(a.config)
     today = dt.date.fromisoformat(a.date) if a.date else None
     if a.cmd == "run":
-        run(cfg, a.offline, today)
+        run_accounts(cfg, a.offline, today)
     else:
         data = HERE / cfg["data_dir"] / ("paper_offline.db" if a.offline else "paper.db")
         if not data.exists():

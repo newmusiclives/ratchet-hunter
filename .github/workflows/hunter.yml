@@ -19,9 +19,8 @@ concurrency:
 jobs:
   run:
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deploy.outputs.page_url }}
+    outputs:
+      publish: ${{ steps.site.outputs.publish }}
     steps:
       - uses: actions/checkout@v4
 
@@ -47,7 +46,7 @@ jobs:
         run: |
           git config user.name "ratchet-hunter-bot"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data/paper.db reports
+          git add data reports
           git commit -m "Paper run $(date -u +%F)" || echo "Nothing new to save"
           # catch up with any newer code before saving (e.g. the monthly refresh ran first)
           ok=0
@@ -58,20 +57,13 @@ jobs:
           if [ "$ok" != 1 ]; then echo "Could not save to GitHub"; exit 1; fi
 
       - name: Build the web page
-        run: |
-          mkdir -p site
-          cp reports/report_*.html site/
-          cp reports/latest.html site/index.html
-          cp published/backtest.html site/backtest.html
-          cp published/dials.html site/dials.html
-          cp reports/trades.csv site/trades.csv
+        id: site
+        run: python build_site.py | tee /tmp/site.txt && grep -o "publish=.*" /tmp/site.txt >> "$GITHUB_OUTPUT"
 
-      - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
+        if: steps.site.outputs.publish == 'true'
         with:
           path: site
-      - id: deploy
-        uses: actions/deploy-pages@v4
 
       - name: Tell a human if anything failed
         if: failure()
@@ -81,3 +73,15 @@ jobs:
           gh issue create --repo "$GITHUB_REPOSITORY" \
             --title "Hunter run failed on $(date -u +%F)" \
             --body "Today's run did not finish. Details: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+
+  deploy:
+    needs: run
+    if: needs.run.outputs.publish == 'true'
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/configure-pages@v5
+      - id: deploy
+        uses: actions/deploy-pages@v4
