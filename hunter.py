@@ -174,14 +174,34 @@ def evaluate(led, src, cfg, rec, notes):
     if not px:
         return "retry", "no market price today"
     stated = terms.get("stated_prices") or []
+    note_extra = ""
     if stated and rec.get("file_date"):
+        fd = dt.date.fromisoformat(rec["file_date"])
+        matches = lambda ref: ref and any(abs(ref / s_ - 1) <= 0.20 for s_ in stated)
         try:
-            ref = src.price_before(t, dt.date.fromisoformat(rec["file_date"]))
+            ref = src.price_before(t, fd)
         except Exception:
             ref = None
-        if ref and not any(abs(ref / s_ - 1) <= 0.20 for s_ in stated):
-            return "skip", (f"price data (${ref:.2f}) doesn't match the price the filing quotes "
-                            f"(${', $'.join(f'{x:g}' for x in stated[:3])}): wrong share class or split-adjusted data")
+        if ref and not matches(ref):
+            # Maybe the offer is for another share class (e.g. preferred) the filing names.
+            alt = None
+            for a in [x for x in terms.get("symbols", []) if x != t]:
+                try:
+                    if matches(src.price_before(a, fd)):
+                        alt = a
+                        break
+                except Exception:
+                    continue
+            if not alt:
+                return "skip", (f"price data (${ref:.2f}) doesn't match the price the filing quotes "
+                                f"(${', $'.join(f'{x:g}' for x in stated[:3])}): wrong share class or split-adjusted data")
+            if led.has_ticker(alt):
+                return "skip", f"already holding this deal ({alt})"
+            note_extra = f"Offer is for {alt} shares, not {t}."
+            t = alt
+            px = _safe_price(src, t)
+            if not px:
+                return "retry", f"no market price today for {t}"
     payout = terms["price"]
     premium = (payout - px) / px * 100
     if premium < cfg["min_premium_pct"]:
@@ -195,7 +215,7 @@ def evaluate(led, src, cfg, rec, notes):
     if profit < cfg["min_profit_dollars"]:
         return "skip", f"only ${profit:.0f} profit possible within the floor rule ({shares} sh)"
 
-    note = "; ".join(terms["notes"])
+    note = "; ".join([n for n in [note_extra] + terms["notes"] if n])
     if cfg.get("ai_review"):
         from ai_review import review
         try:

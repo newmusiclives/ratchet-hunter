@@ -12,8 +12,8 @@
   "ratchet_day": "Friday",
 
   "odd_lot_shares": 99,
-  "min_premium_pct": 3.0,
-  "min_profit_dollars": 25.0,
+  "min_premium_pct": 1.0,
+  "min_profit_dollars": 15.0,
   "max_days_to_expiry": 60,
   "min_days_to_expiry": 2,
   "max_single_deal_cost": 10000.0,

@@ -33,6 +33,18 @@ def _clauses(t):
     return out
 
 
+def symbols(text):
+    """Ticker symbols the filing names ('traded under the symbols "NHPAP" and "NHPBP"')."""
+    t = re.sub(r"\s+", " ", text)
+    out = []
+    for m in re.finditer(r"symbols?\b", t):
+        for tok in re.findall(r"[“\"]([A-Z][A-Z0-9.\-]{1,6})[,.”\"]", t[m.end():m.end() + 90]):
+            tok = tok.rstrip(".,")
+            if tok not in out:
+                out.append(tok)
+    return out
+
+
 def stated_prices(text):
     """Share prices the filing itself quotes ("the last reported sale price ... was $4.91")."""
     return sorted({float(v) for v in STATED.findall(re.sub(r"\s+", " ", text)) if float(v) >= 0.05})
@@ -106,4 +118,5 @@ def extract_terms(text):
     if re.search(r"final results|final proration factor|accepted for purchase an aggregate", low):
         out["final_results"] = True
     out["stated_prices"] = stated_prices(t)
+    out["symbols"] = symbols(t)
     return out

@@ -82,6 +82,40 @@ def test_backtest_replay():
             print(f"   {p['ticker']}: {p['status']} {p['pnl']:+.2f} on {p['closed']}")
 
 
+
+
+
+def test_switches_to_preferred_share_class():
+    """Offer is for preferred shares; common stock price doesn't match -> trade the preferred."""
+    with tempfile.TemporaryDirectory() as tmp:
+        f = Path(tmp) / "cache"
+        (f / "filings").mkdir(parents=True)
+        d = rec(1, "PFD", "55", "2026-08-03")
+        (f / "filings" / (backtest._safe(d["doc_id"]) + ".txt")).write_text(
+            "Offer to purchase Series A Preferred Shares at a purchase price of $22.50 per share, net to the seller in cash. "
+            "The Offer will expire on September 2, 2026. Odd lots will not be subject to proration. "
+            "The Series A Shares are traded on Nasdaq under the symbol “PFDAP.” "
+            "On July 31, 2026, the last reported sale price of the Series A Shares was $21.65 per share.")
+        (f / f"deals_{START}_{END}.json").write_text(json.dumps([d]))
+        (f / "amend_55.json").write_text("[]")
+
+        def series(v):
+            out, x = {}, START - dt.timedelta(days=10)
+            while x <= END:
+                if x.weekday() < 5:
+                    out[x.isoformat()] = v
+                x += dt.timedelta(days=1)
+            return out
+        (f / "prices_PFD.json").write_text(json.dumps(series(14.90)))    # common stock
+        (f / "prices_PFDAP.json").write_text(json.dumps(series(21.65)))  # the preferred
+        led, eq = backtest.run(DAYS, offline=True, cfg=hunter.load_cfg(), cache_dir=f, end=END, quiet=True)
+        held = led.closed_positions() + led.open_positions()
+        assert [p["ticker"] for p in held] == ["PFDAP"], held
+        assert abs(held[0]["pnl"] - 99 * (22.50 - 21.65)) < 0.01
+
+
 if __name__ == "__main__":
     test_backtest_replay()
     print("ok  test_backtest_replay")
+    test_switches_to_preferred_share_class()
+    print("ok  test_switches_to_preferred_share_class")
