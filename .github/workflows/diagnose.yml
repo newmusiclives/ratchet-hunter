@@ -1,0 +1,27 @@
+name: Diagnose takeover engine
+
+on:
+  workflow_dispatch: {}
+
+concurrency:
+  group: hunter
+  cancel-in-progress: false
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install requests beautifulsoup4
+      - name: Reuse downloaded filings
+        uses: actions/cache/restore@v4
+        with:
+          path: data/backtest_cache
+          key: backtest-cache-none
+          restore-keys: backtest-cache-
+      - name: Diagnose
+        run: python -u diagnose.py
