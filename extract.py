@@ -140,8 +140,8 @@ def extract_terms(text):
          or re.search(r"(?:increas|decreas|reduc|amend|revis)(?:e|ed|ing) the (?:offer|purchase) price (?:to|from [^.]{0,30}? to) " + MONEY, t, re.I))
     out["price_change_to"] = _num(m.group(m.lastindex)) if m else None
     # Cash price on a takeover cover page: the most repeated "$X per share, net to the seller/stockholder in cash"
-    cash = [_num(v) for v in re.findall(MONEY + r" per (?:share|Share)[^.$]{0,40}?net to the (?:seller|stockholder|shareholder|holder)s?"
-                                        r"(?: thereof)? in cash", t, re.I)]
+    # every "$X per share ... in cash" mention; the real offer price is repeated far more than any other figure
+    cash = [_num(v) for v in re.findall(MONEY + r" per (?:share|Share)[^.$]{0,60}?in cash", t, re.I)]
     out["cover_cash_price"] = max(set(cash), key=cash.count) if cash else None
     out["has_cvr"] = bool(re.search(r"contingent value right", t, re.I))
     friendly = re.search(r"recommend(?:s|ed|ing)?\s+that\s+(?:the\s+)?[\w’'.\-\s]{0,40}?(?:stockholders|shareholders|holders)"

@@ -127,6 +127,10 @@ def test_takeover_engine_real_world_wording():
           "non-transferable contingent value right per Share, which represents the right to receive up to $3.00 per CVR. "
           "$8.00 per Share, net to the stockholder in cash. The SoundThinking Board unanimously recommended that stockholders tender their Shares.")
     assert t["cover_cash_price"] == 8.00 and t["has_cvr"] and t["board_recommends"]
+    # Ultralife-style: the real price repeats; a stray $18.00 appears once
+    t = e("Options with an exercise price of $18.00 per share in cash will be cancelled. " +
+          "Purchaser is offering $16.00 per Share in cash, without interest. " * 5)
+    assert t["cover_cash_price"] == 16.00
     # Genco: hostile offer the board told shareholders to reject
     t = e("Diana commenced a tender offer to purchase all outstanding shares at $24.80 per share in cash. The Genco Board of Directors "
           "recommends that Genco shareholders reject Diana's inadequate $24.80 tender offer by not tendering their shares.")
