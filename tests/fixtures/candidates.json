@@ -1,0 +1,10 @@
+[
+ {"doc_id":"A:offer.htm","accession":"0000000001-26-000001","form":"SC TO-I","file_date":"2026-11-05","company":"Alder Fixed Cash Corp","ticker":"ALDR","cik":"1","url":"https://www.sec.gov/","file":"alder.txt"},
+ {"doc_id":"B:offer.htm","accession":"0000000002-26-000002","form":"SC TO-I","file_date":"2026-11-04","company":"Birch Dutch Auction Inc","ticker":"BRCH","cik":"2","url":"https://www.sec.gov/","file":"birch.txt"},
+ {"doc_id":"C:offer.htm","accession":"0000000003-26-000003","form":"SC TO-I","file_date":"2026-11-03","company":"Cedar Prorated Co","ticker":"CEDR","cik":"3","url":"https://www.sec.gov/","file":"cedar.txt"},
+ {"doc_id":"D:offer.htm","accession":"0000000004-26-000004","form":"SC TO-T","file_date":"2026-11-03","company":"Dogwood Financing Holdings","ticker":"DOGW","cik":"4","url":"https://www.sec.gov/","file":"dogwood.txt"},
+ {"doc_id":"E:offer.htm","accession":"0000000005-26-000005","form":"SC TO-I","file_date":"2026-11-02","company":"Elm Exchange Industries","ticker":"ELMX","cik":"5","url":"https://www.sec.gov/","file":"elm.txt"},
+ {"doc_id":"F:offer.htm","accession":"0000000006-26-000006","form":"SC TO-I","file_date":"2026-11-02","company":"Fir Premium Systems","ticker":"FIRP","cik":"6","url":"https://www.sec.gov/","file":"fir.txt"},
+ {"doc_id":"G:offer.htm","accession":"0000000007-26-000007","form":"SC TO-I","file_date":"2026-11-02","company":"Gum Tiny Spread Ltd","ticker":"GUMT","cik":"7","url":"https://www.sec.gov/","file":"gum.txt"},
+ {"doc_id":"H:offer.htm","accession":"0000000008-26-000008","form":"SC TO-I","file_date":"2026-11-01","company":"No Ticker Trust","ticker":null,"cik":"8","url":"https://www.sec.gov/","file":"alder.txt"}
+]

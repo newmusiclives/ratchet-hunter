@@ -1,0 +1,32 @@
+{
+  "_comment": "The Ratchet - Hunter paper-trading config. Edit the values below; leave the keys alone.",
+
+  "sec_user_agent": "RatchetHunter yourname@yourdomain.com",
+
+  "starting_capital": 10000.0,
+  "max_loss": 2000.0,
+  "assumed_drop_if_deal_fails": 0.25,
+  "cash_yield_annual": 0.043,
+
+  "ratchet_share_of_profit": 0.5,
+  "ratchet_day": "Friday",
+
+  "odd_lot_shares": 99,
+  "min_premium_pct": 3.0,
+  "min_profit_dollars": 25.0,
+  "max_days_to_expiry": 60,
+  "min_days_to_expiry": 2,
+  "max_single_deal_cost": 10000.0,
+  "skip_if_financing_condition": true,
+
+  "edgar_forms": ["SC TO-I", "SC TO-T", "SC TO-I/A", "SC TO-T/A"],
+  "edgar_lookback_days": 45,
+
+  "ai_review": true,
+  "ai_model": "claude-haiku-5-5",
+  "ai_cost_per_review_estimate": 0.02,
+  "fixed_monthly_running_cost": 0.0,
+
+  "data_dir": "data",
+  "report_dir": "reports"
+}

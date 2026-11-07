@@ -1,0 +1,61 @@
+name: Hunter daily paper run
+
+on:
+  schedule:
+    # 22:17 UTC = 3:17 pm Arizona / New Mexico winter time, Monday-Friday (after the US market closes)
+    - cron: "17 22 * * 1-5"
+  workflow_dispatch: {}   # "Run workflow" button for a manual run
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: hunter
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install
+        run: pip install requests beautifulsoup4
+
+      - name: Run the Hunter (paper only)
+        env:
+          SEC_USER_AGENT: ${{ secrets.SEC_USER_AGENT }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          HUNTER_SITE: "1"
+        run: python hunter.py run
+
+      - name: Save the paper account for tomorrow
+        run: |
+          git config user.name "ratchet-hunter-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/paper.db reports
+          git commit -m "Paper run $(date -u +%F)" || echo "Nothing new to save"
+          git push
+
+      - name: Build the web page
+        run: |
+          mkdir -p site
+          cp reports/report_*.html site/
+          cp reports/latest.html site/index.html
+          cp published/backtest.html site/backtest.html
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+      - id: deploy
+        uses: actions/deploy-pages@v4

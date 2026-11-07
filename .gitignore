@@ -1,0 +1,8 @@
+__pycache__/
+*.pyc
+data/backtest_cache/
+data/backtest_*.db
+data/paper_offline.db
+data/run.log
+site/
+.DS_Store
