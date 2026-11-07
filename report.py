@@ -122,9 +122,10 @@ ul{{font-family:system-ui,sans-serif;font-size:13px;padding-left:18px}} a{{color
 {_svg(led.equity_history())}
 <h2>{'About this run' if title else 'Today'}</h2>
 <ul>{today_notes}{'' if title else f'<li>Cash interest added today: {money(interest)}</li>'}{f'<li>Ratchet raised the floor by {money(lift)}</li>' if lift else ''}
-<li>Room for a new deal under the floor rule: {money(led.max_new_position())}</li></ul>
+<li>Room for a new deal under the floor rule: {money(led.max_new_position())}</li>
+<li>Cash earns the T-bill rate: {(led.get('cash_rate') or cfg['cash_yield_annual']) * 100:.2f}% a year</li></ul>
 <h2>Open deals</h2>{open_tbl}
-<h2>Closed deals</h2>{closed_tbl}
+<h2>Closed deals <span style="font:13px system-ui;color:#8a867d">&middot; <a href="trades.csv">download all trades (CSV)</a></span></h2>{closed_tbl}
 <h2>Every filing the Hunter looked at</h2>{seen_tbl}
 <h2>Activity log</h2><ul>{events}</ul>
 <p class="banner">Paper results assume odd-lot tenders complete at the stated price once the offer expires,
@@ -139,3 +140,18 @@ Real results can differ.</p>
     path.write_text(page)
     (outdir / "latest.html").write_text(page)
     return path
+
+
+def write_trades(led, outdir):
+    """trades.csv: every position, for the accountant and for checking."""
+    import csv
+    outdir.mkdir(parents=True, exist_ok=True)
+    rows = led.closed_positions() + led.open_positions()
+    cols = ["ticker", "company", "engine", "shares", "price_paid", "cost", "payout_price", "opened", "closed",
+            "proceeds", "pnl", "status", "tender_status", "expiration", "url", "note"]
+    with (outdir / "trades.csv").open("w", newline="") as f:
+        w = csv.DictWriter(f, fieldnames=cols, extrasaction="ignore")
+        w.writeheader()
+        for r in rows:
+            w.writerow({c: r.get(c) for c in cols})
+    return outdir / "trades.csv"

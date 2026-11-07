@@ -27,6 +27,11 @@
   "ai_cost_per_review_estimate": 0.02,
   "fixed_monthly_running_cost": 0.0,
 
+  "excluded_tickers": [],
+  "alert_on_paper_deals": true,
+  "alert_assignees": [],
+  "broker_mode": "simulated",
+
   "data_dir": "data",
   "report_dir": "reports"
 }

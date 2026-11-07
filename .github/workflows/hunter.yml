@@ -10,6 +10,7 @@ permissions:
   contents: write
   pages: write
   id-token: write
+  issues: write
 
 concurrency:
   group: hunter
@@ -31,10 +32,14 @@ jobs:
       - name: Install
         run: pip install requests beautifulsoup4
 
-      - name: Run the Hunter (paper only)
+      - name: Run the Hunter
         env:
           SEC_USER_AGENT: ${{ secrets.SEC_USER_AGENT }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          ALPACA_KEY_ID: ${{ secrets.ALPACA_KEY_ID }}
+          ALPACA_SECRET_KEY: ${{ secrets.ALPACA_SECRET_KEY }}
+          ALLOW_REAL_MONEY: ${{ secrets.ALLOW_REAL_MONEY }}
+          GITHUB_TOKEN: ${{ github.token }}
           HUNTER_SITE: "1"
         run: python hunter.py run
 
@@ -52,6 +57,7 @@ jobs:
           cp reports/report_*.html site/
           cp reports/latest.html site/index.html
           cp published/backtest.html site/backtest.html
+          cp reports/trades.csv site/trades.csv
 
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
@@ -59,3 +65,12 @@ jobs:
           path: site
       - id: deploy
         uses: actions/deploy-pages@v4
+
+      - name: Tell a human if anything failed
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh issue create --repo "$GITHUB_REPOSITORY" \
+            --title "Hunter run failed on $(date -u +%F)" \
+            --body "Today's run did not finish. Details: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"

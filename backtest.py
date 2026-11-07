@@ -108,6 +108,10 @@ class ReplaySource:
                 break
         return best
 
+    def tbill_rate(self):
+        p = self.price("^IRX")
+        return p / 100 if p and 0 < p < 20 else None
+
     def price_before(self, ticker, day):
         if ticker not in self.px:
             self.px[ticker] = self.c.prices(ticker, self.start - dt.timedelta(days=10), self.end)
@@ -162,6 +166,10 @@ def run(days=365, offline=False, cfg=None, cache_dir=CACHE, end=None, quiet=Fals
         if not quiet and i % 5 == 0:
             print(f"  downloaded {i}/{len(deals)}")
 
+    try:
+        cache.prices("^IRX", start - dt.timedelta(days=10), end)  # T-bill rate history
+    except Exception:
+        pass
     say("Step 2/2: replaying the year one trading day at a time...")
     db = HERE / "data" / f"backtest_{start}_{end}.db"
     if db.exists():
@@ -175,7 +183,7 @@ def run(days=365, offline=False, cfg=None, cache_dir=CACHE, end=None, quiet=Fals
             led = Ledger(db, cfg, today=day)
         led.today = day
         notes = []
-        led.accrue_cash_yield()
+        led.accrue_cash_yield(src.tbill_rate())
         hunter.monthly_cost(led, cfg)
         hunter.settle(led, src, cfg, notes)
         hunter.hunt(led, src, cfg, notes)

@@ -45,6 +45,23 @@ def symbols(text):
     return out
 
 
+CUTOFF = re.compile(r"(?:record date|as of the close of business on|holders? of record (?:as of|on))[^.]{0,60}?(" + MONTHS + r") (\d{1,2}), (\d{4})", re.I)
+CUTOFF_CTX = re.compile(r"odd[ -]lot|eligib|entitled to (?:tender|participate)|only (?:stockholders|shareholders|holders)", re.I)
+
+
+def ownership_cutoff(text):
+    """A date by which you must already have owned the shares to qualify, if the filing sets one."""
+    t = re.sub(r"\s+", " ", text)
+    dates = []
+    for c in _clauses(t):
+        if CUTOFF_CTX.search(c):
+            for m in CUTOFF.finditer(c):
+                d = _date(f"{m.group(1).title()} {m.group(2)}, {m.group(3)}")
+                if d:
+                    dates.append(d)
+    return max(dates) if dates else None
+
+
 def stated_prices(text):
     """Share prices the filing itself quotes ("the last reported sale price ... was $4.91")."""
     return sorted({float(v) for v in STATED.findall(re.sub(r"\s+", " ", text)) if float(v) >= 0.05})
@@ -119,4 +136,5 @@ def extract_terms(text):
         out["final_results"] = True
     out["stated_prices"] = stated_prices(t)
     out["symbols"] = symbols(t)
+    out["ownership_cutoff"] = ownership_cutoff(t)
     return out

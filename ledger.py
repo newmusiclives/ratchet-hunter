@@ -30,6 +30,7 @@ class Ledger:
         self.db = sqlite3.connect(path)
         self.db.row_factory = sqlite3.Row
         self.db.executescript(SCHEMA)
+        self._migrate()
         self.cfg = cfg
         self.today = today or dt.date.today()
         if self.get("cash") is None:
@@ -43,6 +44,20 @@ class Ledger:
             self.set("running_costs", 0.0)
             self.set("interest_earned", 0.0)
             self.log("open", f"Paper account opened with ${start:,.2f}; floor ${start - cfg['max_loss']:,.2f}")
+
+    def _migrate(self):
+        """Add newer columns to an existing account without losing anything."""
+        have = {r["name"] for r in self.db.execute("PRAGMA table_info(positions)")}
+        for col, typ in [("tender_status", "TEXT"), ("alert_ref", "TEXT"), ("engine", "TEXT"),
+                         ("order_id", "TEXT"), ("deal_json", "TEXT")]:
+            if col not in have:
+                self.db.execute(f"ALTER TABLE positions ADD COLUMN {col} {typ}")
+        self.db.commit()
+
+    def update_position(self, pos_id, **fields):
+        cols = ", ".join(f"{k}=?" for k in fields)
+        self.db.execute(f"UPDATE positions SET {cols} WHERE id=?", (*fields.values(), pos_id))
+        self.db.commit()
 
     # --- key/value state -------------------------------------------------
     def get(self, k, default=None):
@@ -87,13 +102,16 @@ class Ledger:
         return max(0.0, min(room, self.get("cash"), self.cfg["max_single_deal_cost"]))
 
     # --- money movements ---------------------------------------------------
-    def accrue_cash_yield(self):
+    def accrue_cash_yield(self, rate=None):
+        """Interest on idle cash. `rate` is the live T-bill yield when known."""
         last = dt.date.fromisoformat(self.get("last_accrual"))
         days = (self.today - last).days
         if days <= 0:
             return 0.0
+        rate = rate if rate is not None else self.cfg["cash_yield_annual"]
+        self.set("cash_rate", rate)
         cash = self.get("cash")
-        interest = cash * ((1 + self.cfg["cash_yield_annual"]) ** (days / 365) - 1)
+        interest = cash * ((1 + rate) ** (days / 365) - 1)
         self.set("cash", cash + interest)
         self.set("interest_earned", self.get("interest_earned") + interest)
         self.set("last_accrual", self.today.isoformat())
@@ -111,13 +129,16 @@ class Ledger:
         assert cost <= self.get("cash") + 1e-6, "no margin allowed"
         assert self.stressed_value(cost) >= self.get("floor") - 1e-6, "floor rule"
         self.set("cash", self.get("cash") - cost)
-        self.db.execute(
-            "INSERT INTO positions (ticker,company,accession,url,shares,price_paid,cost,payout_price,expiration,dutch,status,opened,note)"
-            " VALUES (?,?,?,?,?,?,?,?,?,?, 'open', ?, ?)",
+        cur = self.db.execute(
+            "INSERT INTO positions (ticker,company,accession,url,shares,price_paid,cost,payout_price,expiration,dutch,status,opened,note,"
+            "engine,tender_status,deal_json) VALUES (?,?,?,?,?,?,?,?,?,?, 'open', ?, ?, ?, ?, ?)",
             (deal["ticker"], deal["company"], deal["accession"], deal["url"], shares, price, cost,
-             deal["payout"], deal["expiration"].isoformat(), int(deal["dutch"]), self.today.isoformat(), deal.get("note", "")))
+             deal["payout"], deal["expiration"].isoformat(), int(deal["dutch"]), self.today.isoformat(), deal.get("note", ""),
+             deal.get("engine", "odd-lot tender"), deal.get("tender_status", "assumed"),
+             json.dumps({k: v for k, v in deal.items() if k not in ("expiration",)}, default=str)))
         self.db.commit()
         self.log("buy", f"{shares} {deal['ticker']} @ ${price:.2f} = ${cost:,.2f}; tender pays ${deal['payout']:.2f}, expires {deal['expiration']}")
+        return cur.lastrowid
 
     def set_expiration(self, pos, new_exp):
         self.db.execute("UPDATE positions SET expiration=? WHERE id=?", (new_exp.isoformat(), pos["id"]))

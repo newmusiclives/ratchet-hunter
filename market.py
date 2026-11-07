@@ -58,3 +58,9 @@ def history(ticker, start, end):
         return {row["Date"]: float(row["Close"]) for row in csv.DictReader(io.StringIO(r.text)) if row.get("Close")}
     except Exception:
         return {}
+
+
+def tbill_rate():
+    """Current 13-week T-bill yield as a decimal (e.g. 0.042), from Yahoo's ^IRX. None if unavailable."""
+    p = last_price("^IRX")
+    return p / 100 if p and 0 < p < 20 else None

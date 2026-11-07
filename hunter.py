@@ -20,6 +20,9 @@ import report
 
 HERE = Path(__file__).resolve().parent
 
+# Live-run helpers, set in run(). Backtests leave these empty.
+HOOKS = {"alerts": None, "broker": None}
+
 
 def load_cfg(path=None):
     return json.loads((Path(path) if path else HERE / "config.json").read_text())
@@ -44,6 +47,9 @@ class Sources:
 
     def price(self, ticker):
         return self.market.last_price(ticker)
+
+    def tbill_rate(self):
+        return self.market.tbill_rate()
 
     def price_before(self, ticker, day):
         series = self.market.history(ticker, day - dt.timedelta(days=14), day - dt.timedelta(days=1))
@@ -78,6 +84,9 @@ class OfflineSources:
     def price_before(self, ticker, day):
         return None
 
+    def tbill_rate(self):
+        return None
+
     def updates_for(self, pos, since_days=120):
         p = self.f / f"update_{pos['ticker']}.txt"
         return [p.read_text()] if p.exists() else []
@@ -103,13 +112,79 @@ def settle(led, src, cfg, notes):
             if finals and max(finals) > pos["payout_price"]:
                 led.set_payout(pos, max(finals))
                 pos["payout_price"] = max(finals)
+        track_tender(led, pos, exp, notes)
+        if pos.get("tender_status") == "pending" and led.today > exp and not terminated:
+            px = _safe_price(src, pos["ticker"]) or pos["price_paid"] * (1 - cfg["assumed_drop_if_deal_fails"])
+            sell_shares(pos, px, notes)
+            led.close(pos, round(px * pos["shares"], 2), "not tendered",
+                      f"Tender was never confirmed, so the shares were sold at ${px:.2f} after the offer closed.")
+            continue
         if terminated:
             px = _safe_price(src, pos["ticker"]) or pos["price_paid"] * (1 - cfg["assumed_drop_if_deal_fails"])
+            sell_shares(pos, px, notes)
             led.close(pos, round(px * pos["shares"], 2), "failed", f"Offer terminated; sold at ${px:.2f}.")
         elif led.today > exp and (final or (led.today - exp).days >= 5):
             proceeds = round(pos["payout_price"] * pos["shares"], 2)
             led.close(pos, proceeds, "settled",
                       "Tender completed; odd lot accepted in full." + (f" (Dutch auction paid ${pos['payout_price']:.2f}.)" if pos["dutch"] else ""))
+
+
+def after_buy(led, cfg, deal, shares, px, pos_id, notes):
+    """Place the real order (if a broker is connected) and tell a human."""
+    broker, alerts = HOOKS["broker"], HOOKS["alerts"]
+    if broker:
+        try:
+            oid = broker.buy(deal["ticker"], shares, px)
+            led.update_position(pos_id, order_id=oid or "")
+        except Exception as e:
+            notes.append(f"Broker order for {deal['ticker']} failed: {e}")
+            if alerts:
+                alerts.open(f"Broker order failed: {deal['ticker']}", f"The Hunter could not place the order: {e}")
+    if not alerts:
+        return
+    try:
+        if deal["tender_status"] == "pending":
+            from alerts import tender_instructions
+            ref = alerts.open(f"ACTION: tender {shares} {deal['ticker']} by {deal['expiration']}",
+                              tender_instructions(deal, shares, broker.name if broker else "the brokerage"),
+                              labels=("hunter", "action-needed"))
+            led.update_position(pos_id, alert_ref=ref)
+        elif cfg.get("alert_on_paper_deals", True):
+            ref = alerts.open(f"Paper deal: bought {shares} {deal['ticker']} @ ${px:.2f} (tender pays ${deal['payout']:.2f})",
+                              f"The Hunter found an odd-lot tender offer and bought it **on paper**.\n\n"
+                              f"- Company: {deal['company']} ({deal['ticker']})\n- Paid: ${px:.2f} x {shares}\n"
+                              f"- Tender price: ${deal['payout']:.2f}\n- Offer ends: {deal['expiration']}\n"
+                              f"- Filing: {deal.get('url', '')}\n\nNo action needed. This is for information.",
+                              labels=("hunter", "paper-deal"))
+            alerts.close(ref)
+    except Exception as e:
+        notes.append(f"Could not send alert: {e}")
+
+
+def track_tender(led, pos, exp, notes):
+    """For real accounts: the tender counts as done once the person closes the alert."""
+    alerts = HOOKS["alerts"]
+    if pos.get("tender_status") != "pending" or not alerts:
+        return
+    try:
+        if alerts.is_closed(pos.get("alert_ref")):
+            led.update_position(pos["id"], tender_status="confirmed")
+            pos["tender_status"] = "confirmed"
+            led.log("tender", f"{pos['ticker']} tender confirmed")
+        elif 0 <= (exp - led.today).days <= 3 and not led.get(f"reminded_{pos['id']}"):
+            alerts.comment(pos.get("alert_ref"), f"Reminder: the {pos['ticker']} offer ends {exp}. Please tender and close this issue.")
+            led.set(f"reminded_{pos['id']}", True)
+    except Exception as e:
+        notes.append(f"Could not check tender status for {pos['ticker']}: {e}")
+
+
+def sell_shares(pos, px, notes):
+    broker = HOOKS["broker"]
+    if broker:
+        try:
+            broker.sell(pos["ticker"], pos["shares"], px)
+        except Exception as e:
+            notes.append(f"Broker sell for {pos['ticker']} failed: {e}")
 
 
 def _safe_price(src, ticker):
@@ -154,6 +229,11 @@ def evaluate(led, src, cfg, rec, notes):
     terms = extract_terms(text)
     if terms["terminated"]:
         return "skip", "filing says the offer was terminated"
+    if t in [x.upper() for x in cfg.get("excluded_tickers", [])]:
+        return "skip", "investor already owns this stock elsewhere (excluded_tickers), so odd-lot priority could fail"
+    cut = terms.get("ownership_cutoff")
+    if cut and cut < led.today:
+        return "skip", f"odd-lot priority only for shareholders who already owned shares on {cut}"
     if not terms["cash_offer"]:
         return "skip", "share-exchange offer (v1 handles cash only)"
     if not terms["odd_lot_priority"]:
@@ -239,7 +319,10 @@ def evaluate(led, src, cfg, rec, notes):
     deal = {"ticker": t, "company": rec.get("company", ""), "accession": rec.get("accession", ""),
             "url": rec.get("url", ""), "payout": payout, "expiration": terms["expiration"],
             "dutch": terms["dutch_auction"], "note": note}
-    led.buy(deal, shares, px)
+    broker = HOOKS["broker"]
+    deal["tender_status"] = "pending" if (broker and broker.real_account) else "assumed"
+    pos_id = led.buy(deal, shares, px)
+    after_buy(led, cfg, deal, shares, px, pos_id, notes)
     ann = premium * 365 / max(days, 1)
     return "BUY", f"{shares} sh @ ${px:.2f} -> ${payout:.2f} ({premium:.1f}%, ~{ann:.0f}% annualized), +${profit:.0f} if it completes"
 
@@ -259,23 +342,55 @@ def monthly_cost(led, cfg):
         led.set("last_cost_month", m)
 
 
-def run(cfg, offline=None, today=None):
+def run(cfg, offline=None, today=None, hooks=None):
     data = Path(cfg["data_dir"]) if Path(cfg["data_dir"]).is_absolute() else HERE / cfg["data_dir"]
     led = Ledger(data / ("paper_offline.db" if offline else "paper.db"), cfg, today=today)
     src = OfflineSources(offline) if offline else Sources(cfg)
     notes = []
-    interest = led.accrue_cash_yield()
+    rdir = Path(cfg["report_dir"]) if Path(cfg["report_dir"]).is_absolute() else HERE / cfg["report_dir"]
+    from alerts import Alerts
+    if hooks is not None:          # tests inject fakes
+        HOOKS.update(hooks)
+    else:
+        HOOKS["alerts"] = None if offline else Alerts(cfg, rdir)
+        HOOKS["broker"] = None if offline else make_broker(cfg, notes)
+    try:
+        rate = src.tbill_rate()
+    except Exception:
+        rate = None
+    if rate is None:
+        notes.append(f"Live T-bill rate unavailable today; used {cfg['cash_yield_annual'] * 100:.2f}%.")
+    interest = led.accrue_cash_yield(rate)
     monthly_cost(led, cfg)
     settle(led, src, cfg, notes)
     hunt(led, src, cfg, notes)
     lift = led.maybe_ratchet()
     equity = mark_to_market(led, src)
     led.record_equity(equity)
-    rdir = Path(cfg["report_dir"]) if Path(cfg["report_dir"]).is_absolute() else HERE / cfg["report_dir"]
+    if HOOKS["broker"]:
+        try:
+            notes += HOOKS["broker"].reconcile(led)
+            HOOKS["broker"].sweep(led, cfg)
+        except Exception as e:
+            notes.append(f"Broker check failed: {e}")
     path = report.write(led, cfg, equity, notes, interest, lift, rdir)
+    report.write_trades(led, rdir)
     print(report.summary_line(led, cfg, equity))
     print(f"Report: {path}")
     return led, equity
+
+
+def make_broker(cfg, notes):
+    """'simulated' (default) means paper only, no broker. See broker.py for the others."""
+    mode = cfg.get("broker_mode", "simulated")
+    if mode == "simulated":
+        return None
+    try:
+        from broker import connect
+        return connect(cfg)
+    except Exception as e:
+        notes.append(f"Broker not connected ({mode}): {e}. Running on paper only.")
+        return None
 
 
 def main():
