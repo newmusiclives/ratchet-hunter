@@ -11,6 +11,7 @@ Paper only. Nothing in this file can place a real order.
 import argparse
 import datetime as dt
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -22,6 +23,8 @@ HERE = Path(__file__).resolve().parent
 
 # Each filing is read once per process; re-checks (e.g. "watch" deals) reuse the result.
 TERMS_MEMO = {}
+# Board stance per company, learned from any of its filings (amendments rarely repeat it).
+STANCE = {}
 
 # Live-run helpers, set in run(). Backtests leave these empty.
 HOOKS = {"alerts": None, "broker": None}
@@ -280,8 +283,15 @@ def evaluate(led, src, cfg, rec, notes):
         return "skip", "takeover search hit, but not an offer for all shares"
     if takeover and terms["odd_lot_priority"]:
         takeover = False   # it's really a partial tender with odd-lot priority: handle it the odd-lot way
-    if takeover and not terms.get("board_recommends"):
-        return "skip", "takeover is hostile or not recommended by the target's board"
+    if takeover:
+        cik = rec.get("cik")
+        if terms.get("board_recommends"):
+            STANCE.setdefault(cik, "agreed")
+        hostile_words = re.search(r"recommend(?:s|ed)?\s+that\s+[^.]{0,80}?(?:reject|not tender)", text or "", re.I) if text else None
+        if hostile_words:
+            STANCE[cik] = "hostile"
+        if STANCE.get(cik) != "agreed":
+            return "skip", "takeover is hostile or not recommended by the target's board"
     if takeover and terms.get("cover_cash_price"):
         terms = dict(terms, price=terms["cover_cash_price"])
     if not takeover and t in [x.upper() for x in cfg.get("excluded_tickers", [])]:
@@ -423,6 +433,7 @@ def run(cfg, offline=None, today=None, hooks=None):
     led = Ledger(data / ("paper_offline.db" if offline else "paper.db"), cfg, today=today)
     src = OfflineSources(offline) if offline else Sources(cfg)
     TERMS_MEMO.clear()
+    STANCE.clear()
     notes = []
     rdir = Path(cfg["report_dir"]) if Path(cfg["report_dir"]).is_absolute() else HERE / cfg["report_dir"]
     from alerts import Alerts

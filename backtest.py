@@ -163,6 +163,7 @@ def run(days=365, offline=False, cfg=None, cache_dir=CACHE, end=None, quiet=Fals
     cache = Cache(cache_dir, offline)
     if hunter.TERMS_MEMO.get("_source") != str(cache_dir):   # reuse readings only within the same data
         hunter.TERMS_MEMO.clear()
+        hunter.STANCE.clear()
         hunter.TERMS_MEMO["_source"] = str(cache_dir)
 
     say(f"Backtest window: {start} to {end}")
