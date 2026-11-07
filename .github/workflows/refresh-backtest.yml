@@ -37,6 +37,8 @@ jobs:
       - name: Replay the last 12 months on real SEC filings
         env:
           SEC_USER_AGENT: ${{ secrets.SEC_USER_AGENT }}
+          PRICE_PROVIDER: eodhd
+          PRICE_API_KEY: ${{ secrets.PRICE_API_KEY }}
           HUNTER_SITE: "1"
         run: |
           python -u backtest.py
