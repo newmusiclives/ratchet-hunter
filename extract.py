@@ -132,10 +132,19 @@ def extract_terms(text):
 
     if re.search(r"(?:has|have) (?:terminated|withdrawn) the (?:tender )?offer|offer (?:was|has been) (?:terminated|withdrawn)", low):
         out["terminated"] = True
-    if re.search(r"final results|final proration factor|accepted for purchase an aggregate", low):
+    if re.search(r"final results|final proration factor|accepted for purchase an aggregate|accepted for payment all|"
+                 r"(?:has|have) (?:successfully )?completed (?:its|the) (?:tender )?offer|offer expired as scheduled", low):
         out["final_results"] = True
-    m = re.search(r"increas(?:e|ed|ing) the (?:offer|purchase) price (?:to|from [^.]{0,30}? to) " + MONEY, t, re.I)
-    out["increased_to"] = _num(m.group(1)) if m else None
+    # Offer price changed by an amendment, up OR down ("amend the offer price ... from $5.00 ... to $4.00")
+    m = (re.search(r"offer price[^$]{0,300}?\bfrom\b[^$]{0,40}?" + MONEY + r".{0,500}?\bto\b[^$]{0,40}?" + MONEY, t, re.I)
+         or re.search(r"(?:increas|decreas|reduc|amend|revis)(?:e|ed|ing) the (?:offer|purchase) price (?:to|from [^.]{0,30}? to) " + MONEY, t, re.I))
+    out["price_change_to"] = _num(m.group(m.lastindex)) if m else None
+    # Cash price on a takeover cover page: the most repeated "$X per share, net to the seller/stockholder in cash"
+    cash = [_num(v) for v in re.findall(MONEY + r" per (?:share|Share)[^.$]{0,40}?net to the (?:seller|stockholder|shareholder|holder)s? in cash", t, re.I)]
+    out["cover_cash_price"] = max(set(cash), key=cash.count) if cash else None
+    out["has_cvr"] = bool(re.search(r"contingent value right", t, re.I))
+    out["board_recommends"] = bool(re.search(r"(?:board|directors)[^.]{0,250}?recommend[^.]{0,120}?(?:accept|tender)", t, re.I)) \
+        and not re.search(r"recommend[^.]{0,120}?(?:reject|not (?:to )?tender)", t, re.I)
     out["all_shares"] = bool(re.search(r"(?:all|any and all) (?:of )?the (?:issued and )?outstanding (?:shares|common stock|ordinary shares)", t, re.I))
     out["stated_prices"] = stated_prices(t)
     out["symbols"] = symbols(t)

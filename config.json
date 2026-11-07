@@ -24,6 +24,7 @@
   "takeover_max_position": 4000.0,
   "takeover_min_annualized_pct": 10.0,
   "takeover_min_premium_pct": 1.0,
+  "takeover_max_spread_pct": 15.0,
 
   "edgar_forms": ["SC TO-I", "SC TO-T", "SC TO-I/A", "SC TO-T/A"],
   "edgar_lookback_days": 45,

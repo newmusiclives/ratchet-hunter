@@ -124,11 +124,11 @@ def settle(led, src, cfg, notes):
             exp = max(ext)
             led.set_expiration(pos, exp)
             notes.append(f"{pos['ticker']}: offer extended to {exp}")
-        bumps = [u["increased_to"] for u in updates if u.get("increased_to")]
-        if bumps and max(bumps) > pos["payout_price"]:
-            led.set_payout(pos, max(bumps))
-            pos["payout_price"] = max(bumps)
-            notes.append(f"{pos['ticker']}: offer price raised to ${max(bumps):.2f}")
+        changes = [u["price_change_to"] for u in updates if u.get("price_change_to")]
+        if changes and abs(changes[-1] - pos["payout_price"]) > 0.005:
+            led.set_payout(pos, changes[-1])
+            notes.append(f"{pos['ticker']}: offer price changed from ${pos['payout_price']:.2f} to ${changes[-1]:.2f}")
+            pos["payout_price"] = changes[-1]
         if pos["dutch"]:
             finals = [u["price"] for u in updates if u["final_results"] and u["price"] and not u["dutch_auction"]]
             if finals and max(finals) > pos["payout_price"]:
@@ -145,6 +145,13 @@ def settle(led, src, cfg, notes):
             px = _safe_price(src, pos["ticker"]) or pos["price_paid"] * (1 - cfg["assumed_drop_if_deal_fails"])
             sell_shares(pos, px, notes)
             led.close(pos, round(px * pos["shares"], 2), "failed", f"Offer terminated; sold at ${px:.2f}.")
+        elif pos.get("engine") == "takeover" and led.today > exp and not final:
+            if (led.today - exp).days >= 30:   # no proof it completed: don't assume the payout
+                px = _safe_price(src, pos["ticker"]) or pos["price_paid"] * (1 - cfg["takeover_assumed_drop"])
+                sell_shares(pos, px, notes)
+                led.close(pos, round(px * pos["shares"], 2), "unresolved",
+                          f"No completion notice 30 days after the deadline; sold at ${px:.2f}.")
+            continue
         elif led.today > exp and (final or (led.today - exp).days >= 5):
             fee = json.loads(pos.get("deal_json") or "{}").get("fee", 0) or 0
             proceeds = round(pos["payout_price"] * pos["shares"] - fee, 2)
@@ -273,6 +280,10 @@ def evaluate(led, src, cfg, rec, notes):
         return "skip", "takeover search hit, but not an offer for all shares"
     if takeover and terms["odd_lot_priority"]:
         takeover = False   # it's really a partial tender with odd-lot priority: handle it the odd-lot way
+    if takeover and not terms.get("board_recommends"):
+        return "skip", "takeover is hostile or not recommended by the target's board"
+    if takeover and terms.get("cover_cash_price"):
+        terms = dict(terms, price=terms["cover_cash_price"])
     if not takeover and t in [x.upper() for x in cfg.get("excluded_tickers", [])]:
         return "skip", "investor already owns this stock elsewhere (excluded_tickers), so odd-lot priority could fail"
     cut = terms.get("ownership_cutoff")
@@ -334,6 +345,9 @@ def evaluate(led, src, cfg, rec, notes):
     min_prem = cfg.get("takeover_min_premium_pct", 1.0) if takeover else cfg["min_premium_pct"]
     if premium < min_prem:
         return "skip", f"premium only {premium:.1f}% (price ${px:.2f} vs offer ${payout:.2f})"
+    if takeover and premium > cfg.get("takeover_max_spread_pct", 15.0):
+        return "skip", (f"spread of {premium:.0f}% is too wide for a normal agreed takeover"
+                        f"{' (offer includes a CVR)' if terms.get('has_cvr') else ''}: price or terms may be misread")
     if takeover and premium * 365 / max(days, 1) < cfg.get("takeover_min_annualized_pct", 10.0):
         return "skip", f"takeover spread {premium:.1f}% over {days} days is too thin"
     drop = cfg.get("takeover_assumed_drop", 0.35) if takeover else cfg["assumed_drop_if_deal_fails"]
@@ -380,7 +394,7 @@ def evaluate(led, src, cfg, rec, notes):
     deal = {"ticker": t, "company": rec.get("company", ""), "fee": fee, "accession": rec.get("accession", ""),
             "url": rec.get("url", ""), "payout": payout, "expiration": terms["expiration"],
             "dutch": terms["dutch_auction"], "note": note, "drop": drop,
-            "engine": "takeover" if takeover else "odd-lot tender"}
+            "engine": "takeover" if takeover else "odd-lot tender", "cvr": terms.get("has_cvr", False)}
     broker = HOOKS["broker"]
     deal["tender_status"] = "pending" if (broker and broker.real_account) else "assumed"
     pos_id = led.buy(deal, shares, px)

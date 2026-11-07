@@ -114,6 +114,25 @@ def test_switches_to_preferred_share_class():
         assert abs(held[0]["pnl"] - 99 * (22.50 - 21.65)) < 0.01
 
 
+def test_takeover_engine_real_world_wording():
+    """Real 2026 cases the first takeover engine got wrong."""
+    from extract import extract_terms as e
+    # Lisata: the buyer CUT the cash price
+    t = e("Pursuant to the Amendment, the Company, Parent and Purchaser agreed to amend the offer price per share of common stock "
+          "under the Original Merger Agreement from (A) (i) $5.00 per Common Share, net to the seller in cash, without interest, plus "
+          "(ii) one non-tradeable contingent value right, to (B) (i) $4.00 per Common Share, net to the seller in cash, without interest.")
+    assert t["price_change_to"] == 4.00
+    # SoundThinking: $8.00 cash plus a CVR (not $10.50 or $11)
+    t = e("Price Offered Per Share: $8.00 per Share, net to the stockholder in cash, without interest (the Closing Amount), plus one "
+          "non-transferable contingent value right per Share, which represents the right to receive up to $3.00 per CVR. "
+          "$8.00 per Share, net to the stockholder in cash. The SoundThinking Board unanimously recommended that stockholders tender their Shares.")
+    assert t["cover_cash_price"] == 8.00 and t["has_cvr"] and t["board_recommends"]
+    # Genco: hostile offer the board told shareholders to reject
+    t = e("Diana commenced a tender offer to purchase all outstanding shares at $24.80 per share in cash. The Genco Board of Directors "
+          "recommends that Genco shareholders reject Diana's inadequate $24.80 tender offer by not tendering their shares.")
+    assert not t["board_recommends"]
+
+
 def test_takeover_engine():
     """Cash takeovers: bigger positions, a price bump, and a broken deal that the floor survives."""
     with tempfile.TemporaryDirectory() as tmp:
@@ -123,9 +142,11 @@ def test_takeover_engine():
         bust = dict(rec(2, "TGTB", "62", "2026-08-10", "SC TO-T"), engine="takeover")
         texts = {
             good["doc_id"]: "Buyer Co is offering to purchase all of the outstanding shares of common stock of TGTA at a price of $20.00 per share, "
-                            "net to the seller in cash. The Offer will expire on September 4, 2026. The Offer is not subject to any financing condition.",
+                            "net to the seller in cash. The Offer will expire on September 4, 2026. The Offer is not subject to any financing condition. "
+                            "The board of directors of TGTA unanimously recommends that stockholders accept the Offer and tender their shares.",
             bust["doc_id"]: "Acquirer Inc is offering to purchase all of the outstanding shares of TGTB for $10.00 per share in cash. "
-                            "The Offer will expire on September 30, 2026. The Offer is not conditioned on obtaining financing.",
+                            "The Offer will expire on September 30, 2026. The Offer is not conditioned on obtaining financing. "
+                            "The TGTB Board recommends that stockholders tender their shares in the Offer.",
         }
         for d in (good, bust):
             (f / "filings" / (backtest._safe(d["doc_id"]) + ".txt")).write_text(texts[d["doc_id"]])
@@ -151,7 +172,8 @@ def test_takeover_engine():
             return out
         (f / "prices_TGTA.json").write_text(json.dumps(series(lambda x: 19.40)))
         (f / "prices_TGTB.json").write_text(json.dumps(series(lambda x: 9.70 if x < dt.date(2026, 9, 14) else 6.30)))
-        led, eq = backtest.run(DAYS, offline=True, cfg=hunter.load_cfg(), cache_dir=f, end=END, quiet=True)
+        cfg = dict(hunter.load_cfg(), engines={"odd_lot": True, "takeover": True})
+        led, eq = backtest.run(DAYS, offline=True, cfg=cfg, cache_dir=f, end=END, quiet=True)
         closed = {p["ticker"]: p for p in led.closed_positions()}
         a, b = closed["TGTA"], closed["TGTB"]
         assert a["shares"] > 99 and a["cost"] <= 4000, a          # not limited to an odd lot, capped per deal
@@ -166,5 +188,7 @@ if __name__ == "__main__":
     print("ok  test_backtest_replay")
     test_switches_to_preferred_share_class()
     print("ok  test_switches_to_preferred_share_class")
+    test_takeover_engine_real_world_wording()
+    print("ok  test_takeover_engine_real_world_wording")
     test_takeover_engine()
     print("ok  test_takeover_engine")
