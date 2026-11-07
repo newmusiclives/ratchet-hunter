@@ -27,16 +27,23 @@ jobs:
       - name: Install
         run: pip install requests beautifulsoup4
 
+      - name: Reuse filings downloaded by earlier runs
+        uses: actions/cache@v4
+        with:
+          path: data/backtest_cache
+          key: backtest-cache-${{ github.run_id }}
+          restore-keys: backtest-cache-
+
       - name: Replay the last 12 months on real SEC filings
         env:
           SEC_USER_AGENT: ${{ secrets.SEC_USER_AGENT }}
           HUNTER_SITE: "1"
         run: |
-          python backtest.py
+          python -u backtest.py
           cp reports/backtest_report.html published/backtest.html
 
       - name: Rebuild the dials page
-        run: python dials.py
+        run: python -u dials.py
 
       - name: Save the new pages
         run: |

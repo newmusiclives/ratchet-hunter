@@ -52,7 +52,8 @@ def build(days=365, end=None, cache_dir=backtest.CACHE, takeover_options=(False,
         results[f"{_k(prem)}|{_k(prof)}|{_k(loss)}|{int(tko)}"] = {
             "eq": round(eq, 2), "floor": round(led.get("floor"), 2), "interest": round(led.get("interest_earned"), 2),
             "deals": deals, "curve": weekly(led.equity_history())}
-        print(f"  {i}/{len(combos)}", end="\r")
+        if i % 8 == 0:
+            print(f"  dials: {i}/{len(combos)} combinations replayed", flush=True)
     print()
     page = TEMPLATE.replace("__DATA__", json.dumps(results)).replace("__GRID__", json.dumps(GRID)) \
         .replace("__TAKEOVER__", "true" if has_takeovers else "false") \

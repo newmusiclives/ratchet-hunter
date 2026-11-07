@@ -20,6 +20,9 @@ import report
 
 HERE = Path(__file__).resolve().parent
 
+# Each filing is read once per process; re-checks (e.g. "watch" deals) reuse the result.
+TERMS_MEMO = {}
+
 # Live-run helpers, set in run(). Backtests leave these empty.
 HOOKS = {"alerts": None, "broker": None}
 
@@ -100,11 +103,18 @@ class OfflineSources:
 
 
 # ---------------------------------------------------------------------------
+def cached_terms(text):
+    key = ("text", len(text), hash(text))
+    if key not in TERMS_MEMO:
+        TERMS_MEMO[key] = extract_terms(text)
+    return TERMS_MEMO[key]
+
+
 def settle(led, src, cfg, notes):
     for pos in led.open_positions():
         exp = dt.date.fromisoformat(pos["expiration"])
         try:
-            updates = [extract_terms(t) for t in src.updates_for(pos)]
+            updates = [cached_terms(t) for t in src.updates_for(pos)]
         except Exception as e:
             updates, _ = [], notes.append(f"Could not check updates for {pos['ticker']}: {e}")
         terminated = any(u["terminated"] for u in updates)
@@ -245,11 +255,17 @@ def evaluate(led, src, cfg, rec, notes):
         return "skip", "no ticker found (not exchange-listed?)"
     if led.has_ticker(t):
         return "skip", "already holding this deal"
-    try:
-        text = " ".join(src.text(d) for d in rec.get("_docs", [rec]))
-    except Exception as e:
-        return "retry", f"could not fetch filing: {e}"
-    terms = extract_terms(text)
+    memo_key = (rec.get("doc_id"), len(rec.get("_docs", [rec])))
+    if memo_key in TERMS_MEMO:
+        terms = TERMS_MEMO[memo_key]
+        text = None   # only needed for the AI reviewer; fetched again below if so
+    else:
+        try:
+            text = " ".join(src.text(d) for d in rec.get("_docs", [rec]))
+        except Exception as e:
+            return "retry", f"could not fetch filing: {e}"
+        terms = extract_terms(text)
+        TERMS_MEMO[memo_key] = terms
     takeover = rec.get("engine") == "takeover"
     if terms["terminated"]:
         return "skip", "filing says the offer was terminated"
@@ -334,6 +350,11 @@ def evaluate(led, src, cfg, rec, notes):
         return "skip", f"only ${profit:.0f} profit possible within the floor rule ({shares} sh{', after the $%g tender fee' % fee if fee else ''})"
 
     note = "; ".join([n for n in [note_extra] + terms["notes"] if n])
+    if cfg.get("ai_review") and text is None:
+        try:
+            text = " ".join(src.text(d) for d in rec.get("_docs", [rec]))
+        except Exception as e:
+            return "retry", f"could not fetch filing: {e}"
     if cfg.get("ai_review"):
         from ai_review import review
         try:
@@ -387,6 +408,7 @@ def run(cfg, offline=None, today=None, hooks=None):
     data = Path(cfg["data_dir"]) if Path(cfg["data_dir"]).is_absolute() else HERE / cfg["data_dir"]
     led = Ledger(data / ("paper_offline.db" if offline else "paper.db"), cfg, today=today)
     src = OfflineSources(offline) if offline else Sources(cfg)
+    TERMS_MEMO.clear()
     notes = []
     rdir = Path(cfg["report_dir"]) if Path(cfg["report_dir"]).is_absolute() else HERE / cfg["report_dir"]
     from alerts import Alerts

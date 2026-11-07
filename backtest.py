@@ -161,6 +161,9 @@ def run(days=365, offline=False, cfg=None, cache_dir=CACHE, end=None, quiet=Fals
     start = end - dt.timedelta(days=days)
     say = (lambda *a: None) if quiet else print
     cache = Cache(cache_dir, offline)
+    if hunter.TERMS_MEMO.get("_source") != str(cache_dir):   # reuse readings only within the same data
+        hunter.TERMS_MEMO.clear()
+        hunter.TERMS_MEMO["_source"] = str(cache_dir)
 
     say(f"Backtest window: {start} to {end}")
     say("Step 1/2: collecting real odd-lot tender offers from SEC EDGAR (first run takes a few minutes)...")
@@ -176,8 +179,8 @@ def run(days=365, offline=False, cfg=None, cache_dir=CACHE, end=None, quiet=Fals
             cache.prices(d["ticker"], start - dt.timedelta(days=10), end)
         except Exception as e:
             problems.append(f"{d.get('ticker')}: {e}")
-        if not quiet and i % 5 == 0:
-            print(f"  downloaded {i}/{len(deals)}")
+        if not quiet and i % 25 == 0:
+            print(f"  downloaded {i}/{len(deals)}", flush=True)
 
     try:
         cache.prices("^IRX", start - dt.timedelta(days=10), end)  # T-bill rate history
