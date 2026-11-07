@@ -36,6 +36,25 @@ class Edgar:
             h["engine"] = "takeover"
         return hits
 
+    def search_mergers(self, lookback_days, start=None, end=None):
+        """Definitive merger proxies for cash deals (shareholder-vote mergers)."""
+        hits = self.search_odd_lot_tenders(["DEFM14A"], lookback_days, start=start, end=end,
+                                           query='"merger consideration" "in cash"')
+        for h in hits:
+            h["engine"] = "merger"
+        return hits
+
+    def merger_updates(self, cik, start=None, end=None, lookback_days=400):
+        """The company's 8-K filings about the merger (vote, completion, termination)."""
+        end = end or dt.date.today()
+        start = start or end - dt.timedelta(days=lookback_days)
+        data = self._get(FTS_URL, q='"merger"', forms="8-K", ciks=str(cik).zfill(10),
+                         dateRange="custom", startdt=start.isoformat(), enddt=end.isoformat()).json()
+        want = str(int(cik))
+        out = [r for r in (parse_hit(h) for h in data.get("hits", {}).get("hits", [])) if r and want in r["all_ciks"]]
+        out.sort(key=lambda r: r.get("file_date") or "")
+        return out
+
     def search_odd_lot_tenders(self, forms, lookback_days, start=None, end=None, query='"odd lot"'):
         end = end or dt.date.today()
         start = start or end - dt.timedelta(days=lookback_days)

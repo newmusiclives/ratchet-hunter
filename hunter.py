@@ -53,6 +53,9 @@ class Sources:
         if eng.get("takeover"):
             seen = {r["accession"] for r in out}
             out += [r for r in self.edgar.search_takeovers(self.cfg["edgar_lookback_days"]) if r["accession"] not in seen]
+        if eng.get("merger"):
+            seen = {r["accession"] for r in out}
+            out += [r for r in self.edgar.search_mergers(self.cfg.get("merger_lookback_days", 120)) if r["accession"] not in seen]
         return out
 
     def text(self, rec):
@@ -74,6 +77,9 @@ class Sources:
         cik = pos["url"].split("/data/")[1].split("/")[0] if "/data/" in pos["url"] else None
         if not cik:
             return []
+        if pos.get("engine") == "merger":
+            hits = [h for h in self.edgar.merger_updates(cik) if (h.get("file_date") or "") >= pos["opened"]]
+            return [self.edgar.fetch_text(h) for h in hits[-4:]]
         hits = self.edgar.amendments(cik, since_days)
         return [self.edgar.fetch_text(h) for h in hits[:4]]
 
@@ -113,8 +119,37 @@ def cached_terms(text):
     return TERMS_MEMO[key]
 
 
+def settle_merger(led, src, cfg, pos, notes):
+    import merger
+    try:
+        statuses = [merger.update_status(t) for t in src.updates_for(pos)]
+    except Exception as e:
+        notes.append(f"Could not check merger news for {pos['ticker']}: {e}")
+        return
+    if "terminated" in statuses:
+        px = _safe_price(src, pos["ticker"]) or pos["price_paid"] * (1 - cfg.get("merger_assumed_drop", 0.35))
+        sell_shares(pos, px, notes)
+        led.close(pos, round(px * pos["shares"], 2), "failed", f"Merger agreement terminated; sold at ${px:.2f}.")
+    elif "completed" in statuses:
+        led.close(pos, round(pos["payout_price"] * pos["shares"], 2), "settled",
+                  "Merger completed; cash paid automatically at the merger price.")
+    else:
+        exp = dt.date.fromisoformat(pos["expiration"])
+        if "approved" in statuses and not led.get(f"approved_{pos['id']}"):
+            led.set(f"approved_{pos['id']}", True)
+            notes.append(f"{pos['ticker']}: shareholders approved the merger")
+        if (led.today - exp).days > cfg.get("merger_max_overdue_days", 180):
+            px = _safe_price(src, pos["ticker"]) or pos["price_paid"]
+            sell_shares(pos, px, notes)
+            led.close(pos, round(px * pos["shares"], 2), "unresolved",
+                      f"Still not closed {cfg.get('merger_max_overdue_days', 180)} days after the expected date; sold at ${px:.2f}.")
+
+
 def settle(led, src, cfg, notes):
     for pos in led.open_positions():
+        if pos.get("engine") == "merger":
+            settle_merger(led, src, cfg, pos, notes)
+            continue
         exp = dt.date.fromisoformat(pos["expiration"])
         try:
             updates = [cached_terms(t) for t in src.updates_for(pos)]
@@ -176,7 +211,17 @@ def after_buy(led, cfg, deal, shares, px, pos_id, notes):
     if not alerts:
         return
     try:
-        if deal["tender_status"] == "pending":
+        if deal.get("engine") == "merger" and broker and broker.real_account:
+            body = (f"The Hunter is buying **{shares} {deal['ticker']}** for a cash merger at **${deal['payout']:.2f}** per share.\n\n"
+                    + (f"**Place this order:** `{broker.order_text('buy', deal['ticker'], shares, px)}`\n\n" if hasattr(broker, 'order_text') else "")
+                    + f"No tender is needed: the cash arrives automatically when the merger closes (expected {deal['expiration']}).\n\n"
+                      f"Filing: {deal.get('url', '')}")
+            ref = alerts.open(f"{'ACTION: buy' if hasattr(broker, 'order_text') else 'Bought'} {shares} {deal['ticker']} (cash merger)",
+                              body, labels=("hunter", "merger"))
+            if not hasattr(broker, "order_text"):
+                alerts.close(ref)
+            led.update_position(pos_id, alert_ref=ref)
+        elif deal["tender_status"] == "pending":
             from alerts import tender_instructions
             body = tender_instructions(deal, shares, broker.name if broker else "the brokerage",
                                        deadline_days=cfg.get("tender_deadline_days_early", 1))
@@ -187,7 +232,7 @@ def after_buy(led, cfg, deal, shares, px, pos_id, notes):
                               body,
                               labels=("hunter", "action-needed"))
             led.update_position(pos_id, alert_ref=ref)
-        elif cfg.get("alert_on_paper_deals", True):
+        elif cfg.get("alert_on_paper_deals", True) and not (broker and broker.real_account):
             ref = alerts.open(f"Paper deal: bought {shares} {deal['ticker']} @ ${px:.2f} (tender pays ${deal['payout']:.2f})",
                               f"The Hunter found an odd-lot tender offer and bought it **on paper**.\n\n"
                               f"- Company: {deal['company']} ({deal['ticker']})\n- Paid: ${px:.2f} x {shares}\n"
@@ -276,6 +321,8 @@ def evaluate(led, src, cfg, rec, notes):
             return "retry", f"could not fetch filing: {e}"
         terms = extract_terms(text)
         TERMS_MEMO[memo_key] = terms
+    if rec.get("engine") == "merger":
+        return evaluate_merger(led, src, cfg, rec, text, notes)
     takeover = rec.get("engine") == "takeover"
     if terms["terminated"]:
         return "skip", "filing says the offer was terminated"
@@ -411,6 +458,58 @@ def evaluate(led, src, cfg, rec, notes):
     after_buy(led, cfg, deal, shares, px, pos_id, notes)
     ann = premium * 365 / max(days, 1)
     return "BUY", f"{shares} sh @ ${px:.2f} -> ${payout:.2f} ({premium:.1f}%, ~{ann:.0f}% annualized), +${profit:.0f} if it completes"
+
+
+def evaluate_merger(led, src, cfg, rec, text, notes):
+    """Cash merger decided by a shareholder vote: buy below the merger price, get paid at closing."""
+    import merger
+    t = rec.get("ticker")
+    if text is None:
+        try:
+            text = " ".join(src.text(d) for d in rec.get("_docs", [rec]))
+        except Exception as e:
+            return "retry", f"could not fetch filing: {e}"
+    filed = dt.date.fromisoformat(rec["file_date"]) if rec.get("file_date") else led.today
+    key = ("merger", rec.get("doc_id"))
+    m = TERMS_MEMO.get(key) or TERMS_MEMO.setdefault(key, merger.terms(text, filed))
+    if not m["price"]:
+        return "skip", "could not read a cash merger price"
+    if m["stock_component"]:
+        return "skip", "part of the payment is in shares (v1 handles all-cash mergers only)"
+    if not m["board_recommends"]:
+        return "skip", "board does not recommend the merger (or the wording wasn't recognised)"
+    if m["financing_condition"]:
+        return "skip", "merger depends on financing"
+    close = m["expected_close"]
+    days = max((close - led.today).days, 14)
+    if days > cfg.get("merger_max_days_to_close", 240):
+        return "watch", f"expected to close {close}, too far away for now"
+    px = _safe_price(src, t)
+    if not px:
+        return "retry", "no market price today"
+    payout = m["price"]
+    premium = (payout - px) / px * 100
+    if premium < cfg.get("merger_min_premium_pct", 1.0):
+        return "skip", f"spread only {premium:.1f}% (price ${px:.2f} vs ${payout:.2f} merger price)"
+    if premium > cfg.get("merger_max_spread_pct", 15.0):
+        return "skip", f"spread of {premium:.0f}% is too wide for an agreed merger: risk or terms may be misread"
+    ann = premium * 365 / days
+    if ann < cfg.get("merger_min_annualized_pct", 8.0):
+        return "skip", f"{premium:.1f}% over ~{days} days (~{ann:.0f}%/yr) is too thin"
+    drop = cfg.get("merger_assumed_drop", 0.35)
+    budget = min(led.max_new_position(drop), cfg.get("merger_max_position", 4000.0))
+    shares = int(budget // px)
+    profit = shares * (payout - px)
+    if shares < 1 or profit < cfg["min_profit_dollars"]:
+        return "skip", f"only ${profit:.0f} profit possible within the floor rule"
+    deal = {"ticker": t, "company": rec.get("company", ""), "accession": rec.get("accession", ""), "url": rec.get("url", ""),
+            "payout": payout, "expiration": close, "dutch": False, "drop": drop, "engine": "merger", "fee": 0,
+            "cvr": m["has_cvr"], "tender_status": "not needed",
+            "note": f"Shareholder vote {m['meeting'] or 'date not stated'}; expected close {close}"
+                    + ("; plus a CVR (not counted)" if m["has_cvr"] else "")}
+    pos_id = led.buy(deal, shares, px)
+    after_buy(led, cfg, deal, shares, px, pos_id, notes)
+    return "BUY", f"{shares} sh @ ${px:.2f} -> ${payout:.2f} at closing ({premium:.1f}%, ~{ann:.0f}%/yr), +${profit:.0f} if it completes"
 
 
 def mark_to_market(led, src):
