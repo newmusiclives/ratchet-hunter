@@ -408,6 +408,12 @@ def run(cfg, offline=None, today=None, hooks=None):
     lift = led.maybe_ratchet()
     equity = mark_to_market(led, src)
     led.record_equity(equity)
+    import platform_features as pf
+    try:
+        pf.maybe_weekly_letter(led, cfg, equity, HOOKS["alerts"], notes)
+        pf.maybe_monthly_review(led, cfg, src, HOOKS["alerts"], notes)
+    except Exception as e:
+        notes.append(f"Letter/review step failed: {e}")
     if HOOKS["broker"]:
         try:
             notes += HOOKS["broker"].reconcile(led)

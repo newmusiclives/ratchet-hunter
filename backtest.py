@@ -153,7 +153,7 @@ def weekdays(a, b):
         d += dt.timedelta(days=1)
 
 
-def run(days=365, offline=False, cfg=None, cache_dir=CACHE, end=None, quiet=False):
+def run(days=365, offline=False, cfg=None, cache_dir=CACHE, end=None, quiet=False, write_report=True):
     cfg = dict(cfg or hunter.load_cfg())
     cfg["ai_review"] = False  # rules only: free, repeatable, no hindsight from a model
     end = end or dt.date.today() - dt.timedelta(days=1)
@@ -183,7 +183,7 @@ def run(days=365, offline=False, cfg=None, cache_dir=CACHE, end=None, quiet=Fals
     except Exception:
         pass
     say("Step 2/2: replaying the year one trading day at a time...")
-    db = HERE / "data" / f"backtest_{start}_{end}.db"
+    db = HERE / "data" / (f"backtest_{start}_{end}.db" if write_report else f"backtest_grid_{start}_{end}.db")
     if db.exists():
         db.unlink()
     src = ReplaySource(cache, cfg, deals, start, end, problems.append)
@@ -203,6 +203,8 @@ def run(days=365, offline=False, cfg=None, cache_dir=CACHE, end=None, quiet=Fals
         equity = hunter.mark_to_market(led, src)
         led.record_equity(equity)
 
+    if not write_report:
+        return led, equity
     out = HERE / "reports"
     notes = [f"BACKTEST of {len(deals)} real SEC filings, {start} to {end}. Rules only (AI reviewer off).",
              "Prices are daily closes; trades assume you bought at the close the day after the filing."]

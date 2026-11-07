@@ -1,0 +1,52 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>The Ratchet - Hunter - 12-month backtest</title>
+<style>
+body{font-family:Georgia,'Iowan Old Style',serif;background:#faf8f3;color:#24221e;max-width:980px;margin:32px auto;padding:0 20px;line-height:1.45}
+h1{font-size:28px;margin:0} h2{font-size:18px;margin:34px 0 10px;border-bottom:1px solid #e3dfd6;padding-bottom:6px}
+.sub{color:#77736b;margin:4px 0 22px;font-family:system-ui,sans-serif;font-size:14px}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}
+.tile{background:#fff;border:1px solid #e3dfd6;border-radius:10px;padding:14px 16px}
+.tile .k{font-family:system-ui,sans-serif;font-size:12px;color:#77736b;text-transform:uppercase;letter-spacing:.05em}
+.tile .v{font-size:24px;margin-top:4px}
+table{width:100%;border-collapse:collapse;font-family:system-ui,sans-serif;font-size:13px;background:#fff}
+th,td{text-align:left;padding:7px 9px;border-bottom:1px solid #eeebe4;vertical-align:top} th{color:#77736b;font-weight:600}
+.muted{color:#8a867d} .up{color:#2c7a4b} .down{color:#b23a2a}
+ul{font-family:system-ui,sans-serif;font-size:13px;padding-left:18px} a{color:#1f5f8b}
+.nav{font-family:system-ui,sans-serif;font-size:13px;margin:0 0 14px}
+.banner{background:#fff4e5;border:1px solid #f0d9b5;border-radius:8px;padding:10px 14px;font-family:system-ui,sans-serif;font-size:13px}
+</style></head><body>
+<h1>The Ratchet &middot; Hunter</h1>
+<p class="sub">12-month backtest &middot; Paper trading report for 2026-10-30 &middot; day 120 &middot; no real money is used</p>
+<div class="tiles">
+ <div class="tile"><div class="k">Account value</div><div class="v">$9,697.19</div></div>
+ <div class="tile"><div class="k">Return so far</div><div class="v down">-3.03%</div></div>
+ <div class="tile"><div class="k">Floor (never below)</div><div class="v">$8,113.30</div></div>
+ <div class="tile"><div class="k">Worst case if every deal fails</div><div class="v">$9,697.19</div></div>
+ <div class="tile"><div class="k">Deals closed / won</div><div class="v">2 / 1</div></div>
+ <div class="tile"><div class="k">Realized deal profit</div><div class="v">$-416.00</div></div>
+ <div class="tile"><div class="k">Cash interest earned</div><div class="v">$113.19</div></div>
+ <div class="tile"><div class="k">AI &amp; running costs</div><div class="v">$0.00</div></div>
+</div>
+<h2>Account value vs. floor</h2>
+<svg viewBox="0 0 760 220" width="100%" role="img" aria-label="Equity and floor over time">
+  <line x1="34" y1="186" x2="726" y2="186" stroke="#d6d3cc"/>
+  <polyline points="34.0,168.5 42.0,168.5 50.1,168.5 58.1,168.5 66.2,168.5 74.2,168.5 82.3,168.5 90.3,168.5 98.4,168.5 106.4,168.5 114.5,168.5 122.5,168.5 130.6,168.5 138.6,168.5 146.7,168.5 154.7,168.5 162.7,168.5 170.8,168.5 178.8,168.5 186.9,168.5 194.9,168.5 203.0,168.5 211.0,168.5 219.1,168.5 227.1,168.5 235.2,168.5 243.2,168.5 251.3,168.5 259.3,168.5 267.3,168.5 275.4,168.5 283.4,168.5 291.5,168.5 299.5,168.5 307.6,168.5 315.6,168.5 323.7,168.5 331.7,168.5 339.8,168.5 347.8,168.5 355.9,168.5 363.9,168.5 372.0,168.5 380.0,168.5 388.0,168.5 396.1,168.5 404.1,168.5 412.2,168.5 420.2,168.5 428.3,168.5 436.3,168.5 444.4,162.7 452.4,162.7 460.5,162.7 468.5,162.7 476.6,162.7 484.6,162.7 492.7,162.7 500.7,162.7 508.7,162.7 516.8,162.7 524.8,162.7 532.9,162.7 540.9,162.7 549.0,162.7 557.0,162.7 565.1,162.7 573.1,162.7 581.2,162.7 589.2,162.7 597.3,162.7 605.3,162.7 613.3,162.7 621.4,162.7 629.4,162.7 637.5,162.7 645.5,162.7 653.6,162.7 661.6,162.7 669.7,162.7 677.7,162.7 685.8,162.7 693.8,162.7 701.9,162.7 709.9,162.7 718.0,162.7 726.0,162.7" fill="none" stroke="#b4532a" stroke-width="2" stroke-dasharray="5 4"/>
+  <polyline points="34.0,66.2 42.0,66.1 50.1,65.9 58.1,65.9 66.2,65.8 74.2,65.7 82.3,65.7 90.3,65.5 98.4,65.4 106.4,65.4 114.5,65.3 122.5,65.3 130.6,65.1 138.6,65.0 146.7,65.0 154.7,64.9 162.7,64.9 170.8,64.7 178.8,64.6 186.9,64.6 194.9,64.5 203.0,64.4 211.0,64.3 219.1,64.2 227.1,64.2 235.2,64.1 243.2,64.1 251.3,64.0 259.3,64.0 267.3,63.9 275.4,63.9 283.4,63.9 291.5,63.8 299.5,63.8 307.6,63.8 315.6,63.7 323.7,63.7 331.7,63.6 339.8,63.6 347.8,63.6 355.9,63.6 363.9,63.5 372.0,63.5 380.0,63.4 388.0,63.4 396.1,63.4 404.1,63.4 412.2,63.3 420.2,63.3 428.3,51.6 436.3,51.6 444.4,51.5 452.4,84.3 460.5,84.2 468.5,84.2 476.6,84.1 484.6,84.0 492.7,83.9 500.7,83.8 508.7,83.8 516.8,83.7 524.8,83.6 532.9,83.5 540.9,83.4 549.0,83.4 557.0,83.3 565.1,83.2 573.1,83.1 581.2,83.0 589.2,83.0 597.3,82.9 605.3,82.8 613.3,82.7 621.4,82.6 629.4,82.6 637.5,82.5 645.5,82.4 653.6,82.3 661.6,82.2 669.7,82.2 677.7,82.1 685.8,82.0 693.8,81.9 701.9,81.8 709.9,81.8 718.0,81.7 726.0,81.6" fill="none" stroke="#1f5f8b" stroke-width="2.5"/>
+  <text x="726" y="73.6" text-anchor="end" fill="#1f5f8b" font-size="12">Equity $9,697</text>
+  <text x="726" y="178.7" text-anchor="end" fill="#b4532a" font-size="12">Floor $8,113</text>
+  <text x="34" y="210" fill="#77736b" font-size="11">2026-07-02</text>
+  <text x="726" y="210" text-anchor="end" fill="#77736b" font-size="11">2026-10-30</text>
+</svg>
+<h2>About this run</h2>
+<ul><li>BACKTEST of 2 real SEC filings, 2026-07-02 to 2026-10-30. Rules only (AI reviewer off).</li><li>Prices are daily closes; trades assume you bought at the close the day after the filing.</li>
+<li>Room for a new deal under the floor rule: $6,335.55</li>
+<li>Cash earns the T-bill rate: 4.30% a year</li></ul>
+<h2>Open deals</h2><p class='muted'>None yet.</p>
+<h2>Closed deals <span style="font:13px system-ui;color:#8a867d">&middot; <a href="trades.csv">download all trades (CSV)</a></span></h2><table><thead><tr><th>Ticker</th><th>Result</th><th>Cost</th><th>Proceeds</th><th>P&amp;L</th><th>Closed</th></tr></thead><tbody><tr><td>TGTB</td><td>failed</td><td>$1,833.30</td><td>$1,190.70</td><td><b class='down'>-642.60</b></td><td>2026-09-15</td></tr><tr><td>TGTA</td><td>settled</td><td>$3,996.40</td><td>$4,223.00</td><td><b class='up'>+226.60</b></td><td>2026-09-09</td></tr></tbody></table>
+<h2>Every filing the Hunter looked at</h2><table><thead><tr><th>Seen</th><th>Decision</th><th>Why</th></tr></thead><tbody><tr><td>2026-08-11</td><td><b>BUY</b></td><td>TGTB TGTB Corp: 189 sh @ $9.70 -&gt; $10.00 (3.1%, ~23% annualized), +$57 if it completes</td></tr><tr><td>2026-08-04</td><td><b>BUY</b></td><td>TGTA TGTA Corp: 206 sh @ $19.40 -&gt; $20.00 (3.1%, ~36% annualized), +$124 if it completes</td></tr></tbody></table>
+<h2>Activity log</h2><ul><li><span class='muted'>2026-09-15</span> <b>failed</b> TGTB: proceeds $1,190.70, P&amp;L $-642.60. Offer terminated; sold at $6.30.</li><li><span class='muted'>2026-09-11</span> <b>ratchet</b> Floor raised by $113.30 to $8,113.30 (half of $226.60 realized this week)</li><li><span class='muted'>2026-09-09</span> <b>settled</b> TGTA: proceeds $4,223.00, P&amp;L $+226.60. Takeover completed at the offer price.</li><li><span class='muted'>2026-08-26</span> <b>final price</b> TGTA Dutch auction final price $20.50</li><li><span class='muted'>2026-08-11</span> <b>buy</b> 189 TGTB @ $9.70 = $1,833.30; tender pays $10.00, expires 2026-09-30</li><li><span class='muted'>2026-08-04</span> <b>buy</b> 206 TGTA @ $19.40 = $3,996.40; tender pays $20.00, expires 2026-09-04</li><li><span class='muted'>2026-07-02</span> <b>open</b> Paper account opened with $10,000.00; floor $8,000.00</li></ul>
+<p class="banner">Paper results assume odd-lot tenders complete at the stated price once the offer expires,
+unless a filing shows the offer was terminated. Dutch auctions are counted at the low end of the range.
+Real results can differ.</p>
+</body></html>

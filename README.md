@@ -68,16 +68,57 @@ Action: `python` · Arguments: `hunter.py run` · Start in: `C:\path\to\hunter`
 
 The computer must be on at that time. Any always-on machine or a $5/month cloud server works.
 
-## Live 30-day paper run on GitHub (no computer needed)
+## Live paper run on GitHub (no computer needed)
 
-The workflow in `.github/workflows/hunter.yml` runs the Hunter every weekday at 3:17 pm Arizona/New Mexico time on GitHub's servers. It saves the paper account (`data/paper.db`) back into the repository and publishes the report to the repository's GitHub Pages site:
-- `index.html`: the live paper run, updated daily
-- `backtest.html`: the 12-month backtest on real SEC filings
+Two jobs run on GitHub's servers:
 
-One-time setup in the repository on github.com:
-1. **Settings → Secrets and variables → Actions → New repository secret.** Name: `SEC_USER_AGENT`. Value: `RatchetHunter your@email.com`. Optionally add `ANTHROPIC_API_KEY` to switch on the AI reviewer.
-2. **Settings → Pages → Build and deployment → Source: GitHub Actions.**
-3. **Actions tab → "Hunter daily paper run" → Run workflow** to do the first run now.
+| Job | When | What it does |
+|---|---|---|
+| **Hunter daily paper run** | Weekdays 3:17 pm Arizona/NM | Checks the SEC, settles and buys deals on paper, saves the account, publishes the website, sends alerts |
+| **Refresh backtest and dials** | 1st of each month (or "Run workflow") | Replays the last 12 months on real SEC filings (both engines) and rebuilds the backtest and dials pages |
+
+**Website** (`https://<user>.github.io/ratchet-hunter/`): live paper run · 12-month backtest · Dials (an interactive page that shows the past year under every combination of settings).
+
+### Alerts (GitHub emails these to anyone watching the repository)
+- **Paper deal**: information only, closed automatically.
+- **Weekly letter** (Fridays): a plain-English summary. Written by Claude if `ANTHROPIC_API_KEY` is set, otherwise a simple template. Also shown on the website.
+- **Monthly review** (first weekday of the month): why filings were skipped, plus Claude's check of up to 8 skips for rules that misread the wording.
+- **ACTION: buy and tender** (real-account modes only): exact steps. Closing the issue confirms the tender. Reminder 3 days before the deadline; if never confirmed, the shares are sold after the offer ends.
+- **Run failed**: if a daily run breaks.
+
+To include another person (for example the account owner), they click **Watch → All activity** on the repository page, or add their GitHub username to `alert_assignees` after making them a collaborator.
+
+### Secrets (Settings → Secrets and variables → Actions)
+| Secret | Needed for |
+|---|---|
+| `SEC_USER_AGENT` | Required. `RatchetHunter your@email.com` |
+| `ANTHROPIC_API_KEY` | Optional: AI deal reviewer, weekly letter, monthly review (pennies per use) |
+| `ALPACA_KEY_ID`, `ALPACA_SECRET_KEY` | Only for `alpaca-paper` / `alpaca-live` |
+| `ALLOW_REAL_MONEY` | Only for `alpaca-live`; must be exactly `YES` |
+
+## The two deal engines
+
+| Engine | What it buys | Size | Risk assumption |
+|---|---|---|---|
+| **Odd-lot tender** | Companies buying back shares with priority for holders of fewer than 100 shares | Up to 99 shares | Stock falls 25% if the deal fails |
+| **Takeover** | Cash tender offers for *all* of a company's shares, bought below the offer price | Up to `takeover_max_position` ($4,000) | Stock falls 35% if the deal fails |
+
+Both share one floor and one Ratchet. Turn either off in `config.json` → `"engines"`.
+
+**Checks every deal must pass:** cash offer · odd-lot priority stated (odd-lot engine) · no financing condition · no ownership cut-off date already passed (e.g. "owned as of September 21") · not in `excluded_tickers` · price data matches the price the filing quotes (catches wrong share classes and reverse-split distortions; switches to the right class, e.g. preferred, when the filing names it) · minimum premium and profit after any `tender_fee` · fits under the floor.
+
+## Real money: broker modes (`broker_mode` in config.json)
+
+| Mode | What happens |
+|---|---|
+| `simulated` (default) | Paper only |
+| `assisted` | **Recommended first real-money step.** Real account at a broker that accepts online tender elections (e.g. Interactive Brokers, whose deadline is noon ET the day before the offer ends). The Hunter emails the exact limit order and tender steps; a person spends about 3 minutes per deal. |
+| `alpaca-paper` | Automatic orders into an Alpaca *paper* account, for testing order flow |
+| `alpaca-live` | Automatic real-money orders. Locked unless `ALLOW_REAL_MONEY=YES`. **Alpaca charges $100 per tender election**, so set `"tender_fee": 100`; few odd-lot deals will then qualify. |
+
+`cash_fund` / `cash_buffer`: with Alpaca, idle cash is swept into a T-bill fund (SGOV by default), keeping a buffer for new deals. Paper accounts accrue interest at the live 13-week T-bill rate.
+
+Before real money: the account is in the investor's own name; list their existing holdings in `excluded_tickers`; get a securities lawyer's view if anyone other than the owner controls it or is paid on results.
 
 ## Test it without internet
 

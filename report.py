@@ -86,7 +86,11 @@ def write(led, cfg, equity, notes, interest, lift, outdir, title=None, filename=
                      for ev in led.recent_events(20))
     today_notes = "".join(f"<li>{e(n)}</li>" for n in notes) or "<li>Nothing unusual.</li>"
 
-    NAV = ("<p class='nav'><a href='index.html'>Live paper run</a> &middot; <a href='backtest.html'>12-month backtest</a></p>"
+    lt = led.get("latest_letter")
+    LETTER = (f"<h2>This week's letter <span style='font:13px system-ui;color:#8a867d'>&middot; {e(lt['date'])}</span></h2>"
+              f"<div class='tile' style='font-size:16px;line-height:1.6'>{'<br><br>'.join(e(p) for p in lt['text'].split(chr(10) + chr(10)))}</div>"
+              if lt else "")
+    NAV = ("<p class='nav'><a href='index.html'>Live paper run</a> &middot; <a href='backtest.html'>12-month backtest</a> &middot; <a href='dials.html'>Dials</a></p>"
            if os.environ.get("HUNTER_SITE") else "")
     page = f"""<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -118,7 +122,7 @@ ul{{font-family:system-ui,sans-serif;font-size:13px;padding-left:18px}} a{{color
  <div class="tile"><div class="k">Cash interest earned</div><div class="v">{money(led.get('interest_earned'))}</div></div>
  <div class="tile"><div class="k">AI &amp; running costs</div><div class="v">{money(led.get('running_costs'))}</div></div>
 </div>
-<h2>Account value vs. floor</h2>
+{LETTER}<h2>Account value vs. floor</h2>
 {_svg(led.equity_history())}
 <h2>{'About this run' if title else 'Today'}</h2>
 <ul>{today_notes}{'' if title else f'<li>Cash interest added today: {money(interest)}</li>'}{f'<li>Ratchet raised the floor by {money(lift)}</li>' if lift else ''}

@@ -36,6 +36,7 @@
   "excluded_tickers": [],
   "alert_on_paper_deals": true,
   "alert_assignees": [],
+  "email_weekly_letter": true,
   "broker_mode": "simulated",
   "broker_name": "Interactive Brokers",
   "tender_fee": 0.0,

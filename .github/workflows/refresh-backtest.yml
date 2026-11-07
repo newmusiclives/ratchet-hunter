@@ -1,0 +1,48 @@
+name: Refresh backtest and dials
+
+on:
+  schedule:
+    # 1st of each month, 14:41 UTC (7:41 am Arizona)
+    - cron: "41 14 1 * *"
+  workflow_dispatch: {}   # "Run workflow" button
+
+permissions:
+  contents: write
+
+concurrency:
+  group: hunter
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install
+        run: pip install requests beautifulsoup4
+
+      - name: Replay the last 12 months on real SEC filings
+        env:
+          SEC_USER_AGENT: ${{ secrets.SEC_USER_AGENT }}
+          HUNTER_SITE: "1"
+        run: |
+          python backtest.py
+          cp reports/backtest_report.html published/backtest.html
+
+      - name: Rebuild the dials page
+        run: python dials.py
+
+      - name: Save the new pages
+        run: |
+          git config user.name "ratchet-hunter-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add published
+          git commit -m "Refresh backtest and dials $(date -u +%F)" || echo "No changes"
+          git pull --rebase origin main
+          git push

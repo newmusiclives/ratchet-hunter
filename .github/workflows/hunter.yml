@@ -57,6 +57,7 @@ jobs:
           cp reports/report_*.html site/
           cp reports/latest.html site/index.html
           cp published/backtest.html site/backtest.html
+          cp published/dials.html site/dials.html
           cp reports/trades.csv site/trades.csv
 
       - uses: actions/configure-pages@v5

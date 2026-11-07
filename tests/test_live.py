@@ -186,6 +186,23 @@ def test_tender_fee_blocks_small_deals():
         assert "ALDR" in held or "FIRP" in held
 
 
+def test_weekly_letter_and_monthly_review():
+    import os
+    os.environ.pop("ANTHROPIC_API_KEY", None)
+    with tempfile.TemporaryDirectory() as tmp:
+        c = cfg(tmp)
+        al = FakeAlerts()
+        hooks = {"alerts": al, "broker": None}
+        hunter.run(c, offline=str(FIX), today=dt.date(2026, 11, 2), hooks=hooks)   # Monday, early in month: review
+        led, _ = hunter.run(c, offline=str(FIX), today=dt.date(2026, 11, 6), hooks=hooks)  # Friday: letter
+        titles = [t for _, t, _ in al.opened]
+        assert any(t.startswith("Monthly review") for t in titles), titles
+        assert any(t.startswith("Weekly letter") for t in titles), titles
+        assert "account is worth" in led.get("latest_letter")["text"]
+        page = (Path(tmp) / "reports" / "latest.html").read_text()
+        assert "This week's letter" in page
+
+
 if __name__ == "__main__":
     for name, fn in list(globals().items()):
         if name.startswith("test_"):
