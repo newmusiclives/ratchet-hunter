@@ -36,6 +36,7 @@ for acc, docs in sorted(groups.items(), key=lambda x: x[1][0]["file_date"]):
     print(f"   CASH: {cash.group(0)[:200] if cash else '-'}")
 
 cfg = dict(hunter.load_cfg(), engines={"odd_lot": True, "takeover": True})
+cfg.pop("backtest_engines", None)
 led, eq = backtest.run(365, offline=True, cfg=cfg, cache_dir=cache, end=end, quiet=True, write_report=False)
 print(f"\nTakeover-on result: ${eq:,.2f}")
 for s in led.recent_seen(2000):

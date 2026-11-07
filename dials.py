@@ -44,6 +44,7 @@ def build(days=365, end=None, cache_dir=backtest.CACHE, takeover_options=(False,
     results = {}
     combos = list(itertools.product(*GRID.values(), takeover_options))
     for i, (prem, prof, loss, tko) in enumerate(combos, 1):
+        base.pop("backtest_engines", None)
         cfg = dict(base, min_premium_pct=prem, min_profit_dollars=prof, max_loss=loss,
                    engines={"odd_lot": True, "takeover": tko})
         led, eq = backtest.run(days, offline=True, cfg=cfg, cache_dir=cache_dir, end=end, quiet=True, write_report=False)

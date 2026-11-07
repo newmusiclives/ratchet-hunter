@@ -173,6 +173,7 @@ def test_takeover_engine():
         (f / "prices_TGTA.json").write_text(json.dumps(series(lambda x: 19.40)))
         (f / "prices_TGTB.json").write_text(json.dumps(series(lambda x: 9.70 if x < dt.date(2026, 9, 14) else 6.30)))
         cfg = dict(hunter.load_cfg(), engines={"odd_lot": True, "takeover": True})
+        cfg.pop("backtest_engines")
         led, eq = backtest.run(DAYS, offline=True, cfg=cfg, cache_dir=f, end=END, quiet=True)
         closed = {p["ticker"]: p for p in led.closed_positions()}
         a, b = closed["TGTA"], closed["TGTB"]

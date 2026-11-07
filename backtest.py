@@ -156,6 +156,8 @@ def weekdays(a, b):
 
 def run(days=365, offline=False, cfg=None, cache_dir=CACHE, end=None, quiet=False, write_report=True):
     cfg = dict(cfg or hunter.load_cfg())
+    if "backtest_engines" in cfg:
+        cfg["engines"] = cfg["backtest_engines"]   # only verified engines; remove this key to test others
     cfg["ai_review"] = False  # rules only: free, repeatable, no hindsight from a model
     end = end or dt.date.today() - dt.timedelta(days=1)
     start = end - dt.timedelta(days=days)

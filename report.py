@@ -62,6 +62,8 @@ def write(led, cfg, equity, notes, interest, lift, outdir, title=None, filename=
     open_tbl = _table(led.open_positions(), [
         ("Ticker", lambda p: f"<a href='{e(p['url'])}'>{e(p['ticker'])}</a>"),
         ("Company", lambda p: e(p["company"])),
+        ("Type", lambda p: e(p.get("engine") or "odd-lot tender") + (" <b style='color:#b4532a'>(experimental)</b>"
+                            if (p.get("engine") or "") in cfg.get("experimental_engines", []) else "")),
         ("Shares", lambda p: p["shares"]),
         ("Paid", lambda p: money(p["price_paid"])),
         ("Tender pays", lambda p: money(p["payout_price"])),
@@ -71,6 +73,8 @@ def write(led, cfg, equity, notes, interest, lift, outdir, title=None, filename=
     ])
     closed_tbl = _table(list(reversed(closed)), [
         ("Ticker", lambda p: e(p["ticker"])),
+        ("Type", lambda p: e(p.get("engine") or "odd-lot tender") + (" (experimental)"
+                            if (p.get("engine") or "") in cfg.get("experimental_engines", []) else "")),
         ("Result", lambda p: e(p["status"])),
         ("Cost", lambda p: money(p["cost"])),
         ("Proceeds", lambda p: money(p["proceeds"])),
