@@ -58,7 +58,7 @@ def test_merger_buy_and_settle():
         held = {p["ticker"]: p for p in led.open_positions()}
         assert set(held) == {"MTGT"}, held
         m = held["MTGT"]
-        assert m["cost"] <= 4000 and m["shares"] > 99 and m["expiration"] == "2027-03-31"
+        assert m["cost"] <= 4000 and m["shares"] == 4000 // 43.00 and m["expiration"] == "2027-03-31", m
         assert m["tender_status"] in ("assumed", "not needed")
         assert led.stressed_value() >= led.get("floor") - 1e-6
         (f / "update_MTGT.txt").write_text("On March 3, 2027, the Company completed its previously announced merger with Parent.")
