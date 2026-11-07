@@ -58,8 +58,11 @@ def meeting_date(t):
 
 
 def board_recommends(t):
-    return bool(re.search(r"recommends? (?:unanimously )?that (?:you|(?:the )?(?:stockholders|shareholders)[^.]{0,30}?) vote [“\"']?for[”\"']? "
-                          r"[^.]{0,80}?(?:merger|adoption|proposal)", t, re.I))
+    """The target's board tells shareholders to vote FOR / approve the merger."""
+    if re.search(r"recommend(?:s|ed)?[^.]{0,120}?\bvote\b[^.]{0,15}?[“\"'(]*\s*against\b[^.]{0,40}?merger", t, re.I):
+        return False
+    return bool(re.search(r"recommend(?:s|ed)?[^.]{0,160}?\bvote\b[^.]{0,15}?[“\"'(]*\s*for\b", t, re.I)
+                or re.search(r"recommend(?:s|ed)?[^.]{0,100}?(?:approv(?:e|al of)|adopt(?:ion of)?) (?:the )?(?:merger|agreement and plan of merger|merger agreement)", t, re.I))
 
 
 def terms(text, filed):
