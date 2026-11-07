@@ -24,12 +24,15 @@ for acc, docs in sorted(groups.items(), key=lambda x: x[1][0]["file_date"]):
                     for d in docs if (cache / "filings" / (backtest._safe(d["doc_id"]) + ".txt")).exists())
     t = extract_terms(text)
     flat = re.sub(r"\s+", " ", text)
+    fr = re.search(r".{0,60}recommend(?:s|ed|ing)?\s+that\s+(?:the\s+)?[\w’'.\-\s]{0,40}?(?:stockholders|shareholders|holders)[^.]{0,80}?(?:accept the offer|tender).{0,20}", flat, re.I)
+    ho = re.search(r".{0,80}(?:recommend(?:s|ed)?\s+that\s+[^.]{0,80}?(?:reject|not tender|not to tender)|unsolicited (?:tender |exchange )?offer).{0,60}", flat, re.I)
     rec = re.search(r".{0,140}recommend.{0,160}", flat, re.I)
     cash = re.search(r".{0,60}per (?:share|Share)[^.$]{0,40}?net to the [a-z]+s? in cash.{0,40}", flat, re.I)
     print(f"\n{d0['file_date']} {d0.get('ticker')} {d0['company'][:40]} docs={len(docs)}")
     print(f"   price={t['price']} cover_cash={t['cover_cash_price']} cvr={t['has_cvr']} board_ok={t['board_recommends']} "
           f"all_shares={t['all_shares']} exp={t['expiration']} fin={t['financing_condition']} odd={t['odd_lot_priority']}")
-    print(f"   RECOMMEND: {rec.group(0)[:300] if rec else '-'}")
+    print(f"   FRIENDLY: {fr.group(0)[:220] if fr else '-'}")
+    print(f"   HOSTILE: {ho.group(0)[:220] if ho else '-'}")
     print(f"   CASH: {cash.group(0)[:200] if cash else '-'}")
 
 cfg = dict(hunter.load_cfg(), engines={"odd_lot": True, "takeover": True})
