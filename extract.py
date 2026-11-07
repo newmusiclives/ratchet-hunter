@@ -134,6 +134,9 @@ def extract_terms(text):
         out["terminated"] = True
     if re.search(r"final results|final proration factor|accepted for purchase an aggregate", low):
         out["final_results"] = True
+    m = re.search(r"increas(?:e|ed|ing) the (?:offer|purchase) price (?:to|from [^.]{0,30}? to) " + MONEY, t, re.I)
+    out["increased_to"] = _num(m.group(1)) if m else None
+    out["all_shares"] = bool(re.search(r"(?:all|any and all) (?:of )?the (?:issued and )?outstanding (?:shares|common stock|ordinary shares)", t, re.I))
     out["stated_prices"] = stated_prices(t)
     out["symbols"] = symbols(t)
     out["ownership_cutoff"] = ownership_cutoff(t)

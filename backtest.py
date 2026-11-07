@@ -56,8 +56,20 @@ class Cache:
 
     def deals(self, cfg, start, end):
         forms = [f for f in cfg["edgar_forms"] if not f.endswith("/A")]
-        return self._json(f"deals_{start}_{end}.json",
-                          lambda: self.edgar(cfg).search_odd_lot_tenders(forms, 0, start=start, end=end))
+        eng = cfg.get("engines", {"odd_lot": True})
+        out = []
+        if eng.get("odd_lot", True):
+            out += self._json(f"deals_{start}_{end}.json",
+                              lambda: self.edgar(cfg).search_odd_lot_tenders(forms, 0, start=start, end=end))
+        if eng.get("takeover"):
+            try:
+                tk = self._json(f"takeovers_{start}_{end}.json",
+                                lambda: self.edgar(cfg).search_takeovers(0, start=start, end=end))
+            except RuntimeError:   # offline and never downloaded
+                tk = []
+            seen = {d["accession"] for d in out}
+            out += [d for d in tk if d["accession"] not in seen]
+        return out
 
     def amendments(self, cfg, cik, start, end):
         # One file per company covering the whole window, so replay and download agree.

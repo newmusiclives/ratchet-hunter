@@ -28,14 +28,22 @@ class Edgar:
         r.raise_for_status()
         return r
 
-    def search_odd_lot_tenders(self, forms, lookback_days, start=None, end=None):
+    def search_takeovers(self, lookback_days, start=None, end=None):
+        """Third-party cash tender offers for all of a company's shares (merger-arbitrage candidates)."""
+        hits = self.search_odd_lot_tenders(["SC TO-T"], lookback_days, start=start, end=end,
+                                           query='"all of the outstanding"')
+        for h in hits:
+            h["engine"] = "takeover"
+        return hits
+
+    def search_odd_lot_tenders(self, forms, lookback_days, start=None, end=None, query='"odd lot"'):
         end = end or dt.date.today()
         start = start or end - dt.timedelta(days=lookback_days)
         hits, seen = [], set()
         for form in forms:
             frm = 0
             while True:
-                data = self._get(FTS_URL, q='"odd lot"', forms=form,
+                data = self._get(FTS_URL, q=query, forms=form,
                                  dateRange="custom", startdt=start.isoformat(),
                                  enddt=end.isoformat(), **({"from": frm} if frm else {})).json()
                 batch = data.get("hits", {}).get("hits", [])

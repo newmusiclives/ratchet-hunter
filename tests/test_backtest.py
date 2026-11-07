@@ -114,8 +114,57 @@ def test_switches_to_preferred_share_class():
         assert abs(held[0]["pnl"] - 99 * (22.50 - 21.65)) < 0.01
 
 
+def test_takeover_engine():
+    """Cash takeovers: bigger positions, a price bump, and a broken deal that the floor survives."""
+    with tempfile.TemporaryDirectory() as tmp:
+        f = Path(tmp) / "cache"
+        (f / "filings").mkdir(parents=True)
+        good = dict(rec(1, "TGTA", "61", "2026-08-03", "SC TO-T"), engine="takeover")
+        bust = dict(rec(2, "TGTB", "62", "2026-08-10", "SC TO-T"), engine="takeover")
+        texts = {
+            good["doc_id"]: "Buyer Co is offering to purchase all of the outstanding shares of common stock of TGTA at a price of $20.00 per share, "
+                            "net to the seller in cash. The Offer will expire on September 4, 2026. The Offer is not subject to any financing condition.",
+            bust["doc_id"]: "Acquirer Inc is offering to purchase all of the outstanding shares of TGTB for $10.00 per share in cash. "
+                            "The Offer will expire on September 30, 2026. The Offer is not conditioned on obtaining financing.",
+        }
+        for d in (good, bust):
+            (f / "filings" / (backtest._safe(d["doc_id"]) + ".txt")).write_text(texts[d["doc_id"]])
+        amends = {"61": [(5, "2026-08-25", "Buyer Co has increased the offer price to $20.50 per share."),
+                         (6, "2026-09-08", "Final results: Buyer Co accepted for purchase an aggregate of 9,000,000 shares.")],
+                  "62": [(7, "2026-09-14", "Acquirer Inc has terminated the tender offer.")]}
+        for cik, items in amends.items():
+            recs = []
+            for i, date, text in items:
+                r = rec(i, "?", cik, date, "SC TO-T/A")
+                recs.append(r)
+                (f / "filings" / (backtest._safe(r["doc_id"]) + ".txt")).write_text(text)
+            (f / f"amend_{cik}.json").write_text(json.dumps(recs))
+        (f / f"deals_{START}_{END}.json").write_text("[]")
+        (f / f"takeovers_{START}_{END}.json").write_text(json.dumps([good, bust]))
+
+        def series(fn):
+            out, x = {}, START - dt.timedelta(days=10)
+            while x <= END:
+                if x.weekday() < 5:
+                    out[x.isoformat()] = fn(x)
+                x += dt.timedelta(days=1)
+            return out
+        (f / "prices_TGTA.json").write_text(json.dumps(series(lambda x: 19.40)))
+        (f / "prices_TGTB.json").write_text(json.dumps(series(lambda x: 9.70 if x < dt.date(2026, 9, 14) else 6.30)))
+        led, eq = backtest.run(DAYS, offline=True, cfg=hunter.load_cfg(), cache_dir=f, end=END, quiet=True)
+        closed = {p["ticker"]: p for p in led.closed_positions()}
+        a, b = closed["TGTA"], closed["TGTB"]
+        assert a["shares"] > 99 and a["cost"] <= 4000, a          # not limited to an odd lot, capped per deal
+        assert a["status"] == "settled" and abs(a["proceeds"] - a["shares"] * 20.50) < 0.01  # paid the raised price
+        assert b["status"] == "failed" and b["pnl"] < 0
+        assert eq > led.get("floor")
+        print(f"   takeovers: TGTA {a['pnl']:+.2f}, TGTB {b['pnl']:+.2f}, end ${eq:,.2f}")
+
+
 if __name__ == "__main__":
     test_backtest_replay()
     print("ok  test_backtest_replay")
     test_switches_to_preferred_share_class()
     print("ok  test_switches_to_preferred_share_class")
+    test_takeover_engine()
+    print("ok  test_takeover_engine")

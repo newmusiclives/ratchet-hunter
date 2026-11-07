@@ -90,14 +90,21 @@ class Ledger:
         self.db.commit()
 
     # --- the Floor Rule ----------------------------------------------------
-    def stressed_value(self, extra_cost=0.0):
-        d = self.cfg["assumed_drop_if_deal_fails"]
-        held = sum(p["cost"] for p in self.open_positions()) + extra_cost
-        return self.get("cash") - extra_cost + held * (1 - d)
+    def _drop(self, pos):
+        try:
+            return float(json.loads(pos.get("deal_json") or "{}").get("drop") or self.cfg["assumed_drop_if_deal_fails"])
+        except (ValueError, TypeError):
+            return self.cfg["assumed_drop_if_deal_fails"]
 
-    def max_new_position(self):
+    def stressed_value(self, extra_cost=0.0, extra_drop=None):
+        """Account value if every open deal failed and each stock fell by its assumed drop."""
+        extra_drop = self.cfg["assumed_drop_if_deal_fails"] if extra_drop is None else extra_drop
+        held = sum(p["cost"] * (1 - self._drop(p)) for p in self.open_positions())
+        return self.get("cash") - extra_cost + held + extra_cost * (1 - extra_drop)
+
+    def max_new_position(self, drop=None):
         """Largest purchase that keeps the stressed value at or above the floor."""
-        d = self.cfg["assumed_drop_if_deal_fails"]
+        d = self.cfg["assumed_drop_if_deal_fails"] if drop is None else drop
         room = (self.stressed_value() - self.get("floor")) / d
         return max(0.0, min(room, self.get("cash"), self.cfg["max_single_deal_cost"]))
 
@@ -127,7 +134,7 @@ class Ledger:
     def buy(self, deal, shares, price):
         cost = round(shares * price, 2)
         assert cost <= self.get("cash") + 1e-6, "no margin allowed"
-        assert self.stressed_value(cost) >= self.get("floor") - 1e-6, "floor rule"
+        assert self.stressed_value(cost, deal.get("drop")) >= self.get("floor") - 1e-6, "floor rule"
         self.set("cash", self.get("cash") - cost)
         cur = self.db.execute(
             "INSERT INTO positions (ticker,company,accession,url,shares,price_paid,cost,payout_price,expiration,dutch,status,opened,note,"

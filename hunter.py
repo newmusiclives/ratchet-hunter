@@ -40,7 +40,14 @@ class Sources:
         self.cfg = cfg
 
     def candidates(self):
-        return self.edgar.search_odd_lot_tenders(self.cfg["edgar_forms"], self.cfg["edgar_lookback_days"])
+        eng = self.cfg.get("engines", {"odd_lot": True})
+        out = []
+        if eng.get("odd_lot", True):
+            out += self.edgar.search_odd_lot_tenders(self.cfg["edgar_forms"], self.cfg["edgar_lookback_days"])
+        if eng.get("takeover"):
+            seen = {r["accession"] for r in out}
+            out += [r for r in self.edgar.search_takeovers(self.cfg["edgar_lookback_days"]) if r["accession"] not in seen]
+        return out
 
     def text(self, rec):
         return self.edgar.fetch_text(rec)
@@ -107,6 +114,11 @@ def settle(led, src, cfg, notes):
             exp = max(ext)
             led.set_expiration(pos, exp)
             notes.append(f"{pos['ticker']}: offer extended to {exp}")
+        bumps = [u["increased_to"] for u in updates if u.get("increased_to")]
+        if bumps and max(bumps) > pos["payout_price"]:
+            led.set_payout(pos, max(bumps))
+            pos["payout_price"] = max(bumps)
+            notes.append(f"{pos['ticker']}: offer price raised to ${max(bumps):.2f}")
         if pos["dutch"]:
             finals = [u["price"] for u in updates if u["final_results"] and u["price"] and not u["dutch_auction"]]
             if finals and max(finals) > pos["payout_price"]:
@@ -127,7 +139,7 @@ def settle(led, src, cfg, notes):
             fee = json.loads(pos.get("deal_json") or "{}").get("fee", 0) or 0
             proceeds = round(pos["payout_price"] * pos["shares"] - fee, 2)
             led.close(pos, proceeds, "settled",
-                      "Tender completed; odd lot accepted in full." + (f" (Dutch auction paid ${pos['payout_price']:.2f}.)" if pos["dutch"] else ""))
+                      ("Takeover completed at the offer price." if (pos.get("engine") == "takeover") else "Tender completed; odd lot accepted in full.") + (f" (Dutch auction paid ${pos['payout_price']:.2f}.)" if pos["dutch"] else ""))
 
 
 def after_buy(led, cfg, deal, shares, px, pos_id, notes):
@@ -238,16 +250,21 @@ def evaluate(led, src, cfg, rec, notes):
     except Exception as e:
         return "retry", f"could not fetch filing: {e}"
     terms = extract_terms(text)
+    takeover = rec.get("engine") == "takeover"
     if terms["terminated"]:
         return "skip", "filing says the offer was terminated"
-    if t in [x.upper() for x in cfg.get("excluded_tickers", [])]:
+    if takeover and not terms["all_shares"]:
+        return "skip", "takeover search hit, but not an offer for all shares"
+    if takeover and terms["odd_lot_priority"]:
+        takeover = False   # it's really a partial tender with odd-lot priority: handle it the odd-lot way
+    if not takeover and t in [x.upper() for x in cfg.get("excluded_tickers", [])]:
         return "skip", "investor already owns this stock elsewhere (excluded_tickers), so odd-lot priority could fail"
     cut = terms.get("ownership_cutoff")
-    if cut and cut < led.today:
+    if not takeover and cut and cut < led.today:
         return "skip", f"odd-lot priority only for shareholders who already owned shares on {cut}"
     if not terms["cash_offer"]:
         return "skip", "share-exchange offer (v1 handles cash only)"
-    if not terms["odd_lot_priority"]:
+    if not takeover and not terms["odd_lot_priority"]:
         return "skip", "no clear odd-lot priority"
     if not terms["price"]:
         return "skip", "could not read the offer price"
@@ -268,7 +285,10 @@ def evaluate(led, src, cfg, rec, notes):
     note_extra = ""
     if stated and rec.get("file_date"):
         fd = dt.date.fromisoformat(rec["file_date"])
-        matches = lambda ref: ref and any(abs(ref / s_ - 1) <= 0.20 for s_ in stated)
+        offer = terms["price"] or 0
+        # Takeover stocks jump on the news, so near the offer price also counts as a match.
+        matches = lambda ref: ref and (any(abs(ref / s_ - 1) <= 0.20 for s_ in stated)
+                                       or (takeover and 0.6 * offer <= ref <= 1.05 * offer))
         try:
             ref = src.price_before(t, fd)
         except Exception:
@@ -295,11 +315,17 @@ def evaluate(led, src, cfg, rec, notes):
                 return "retry", f"no market price today for {t}"
     payout = terms["price"]
     premium = (payout - px) / px * 100
-    if premium < cfg["min_premium_pct"]:
+    min_prem = cfg.get("takeover_min_premium_pct", 1.0) if takeover else cfg["min_premium_pct"]
+    if premium < min_prem:
         return "skip", f"premium only {premium:.1f}% (price ${px:.2f} vs offer ${payout:.2f})"
-
-    budget = led.max_new_position()
-    shares = int(min(cfg["odd_lot_shares"], budget // px))
+    if takeover and premium * 365 / max(days, 1) < cfg.get("takeover_min_annualized_pct", 10.0):
+        return "skip", f"takeover spread {premium:.1f}% over {days} days is too thin"
+    drop = cfg.get("takeover_assumed_drop", 0.35) if takeover else cfg["assumed_drop_if_deal_fails"]
+    budget = led.max_new_position(drop)
+    if takeover:
+        shares = int(min(budget, cfg.get("takeover_max_position", 4000.0)) // px)
+    else:
+        shares = int(min(cfg["odd_lot_shares"], budget // px))
     fee = cfg.get("tender_fee", 0.0)
     profit = shares * (payout - px) - fee
     if shares < 1:
@@ -332,7 +358,8 @@ def evaluate(led, src, cfg, rec, notes):
         note += f"; ${fee:g} tender fee"
     deal = {"ticker": t, "company": rec.get("company", ""), "fee": fee, "accession": rec.get("accession", ""),
             "url": rec.get("url", ""), "payout": payout, "expiration": terms["expiration"],
-            "dutch": terms["dutch_auction"], "note": note}
+            "dutch": terms["dutch_auction"], "note": note, "drop": drop,
+            "engine": "takeover" if takeover else "odd-lot tender"}
     broker = HOOKS["broker"]
     deal["tender_status"] = "pending" if (broker and broker.real_account) else "assumed"
     pos_id = led.buy(deal, shares, px)
