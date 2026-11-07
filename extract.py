@@ -143,8 +143,11 @@ def extract_terms(text):
     cash = [_num(v) for v in re.findall(MONEY + r" per (?:share|Share)[^.$]{0,40}?net to the (?:seller|stockholder|shareholder|holder)s? in cash", t, re.I)]
     out["cover_cash_price"] = max(set(cash), key=cash.count) if cash else None
     out["has_cvr"] = bool(re.search(r"contingent value right", t, re.I))
-    out["board_recommends"] = bool(re.search(r"(?:board|directors)[^.]{0,250}?recommend[^.]{0,120}?(?:accept|tender)", t, re.I)) \
-        and not re.search(r"recommend[^.]{0,120}?(?:reject|not (?:to )?tender)", t, re.I)
+    friendly = re.search(r"recommend(?:s|ed|ing)?\s+that\s+(?:the\s+)?[\w’'.\-\s]{0,40}?(?:stockholders|shareholders|holders)"
+                         r"[^.]{0,80}?(?:accept the offer|tender)", t, re.I)
+    hostile = re.search(r"recommend(?:s|ed)?\s+that\s+[^.]{0,80}?(?:reject|not tender|not to tender)"
+                        r"|unsolicited (?:tender |exchange )?offer", t, re.I)
+    out["board_recommends"] = bool(friendly) and not hostile
     out["all_shares"] = bool(re.search(r"(?:all|any and all) (?:of )?the (?:issued and )?outstanding (?:shares|common stock|ordinary shares)", t, re.I))
     out["stated_prices"] = stated_prices(t)
     out["symbols"] = symbols(t)
