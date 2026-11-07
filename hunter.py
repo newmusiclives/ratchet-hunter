@@ -124,7 +124,8 @@ def settle(led, src, cfg, notes):
             sell_shares(pos, px, notes)
             led.close(pos, round(px * pos["shares"], 2), "failed", f"Offer terminated; sold at ${px:.2f}.")
         elif led.today > exp and (final or (led.today - exp).days >= 5):
-            proceeds = round(pos["payout_price"] * pos["shares"], 2)
+            fee = json.loads(pos.get("deal_json") or "{}").get("fee", 0) or 0
+            proceeds = round(pos["payout_price"] * pos["shares"] - fee, 2)
             led.close(pos, proceeds, "settled",
                       "Tender completed; odd lot accepted in full." + (f" (Dutch auction paid ${pos['payout_price']:.2f}.)" if pos["dutch"] else ""))
 
@@ -145,8 +146,13 @@ def after_buy(led, cfg, deal, shares, px, pos_id, notes):
     try:
         if deal["tender_status"] == "pending":
             from alerts import tender_instructions
-            ref = alerts.open(f"ACTION: tender {shares} {deal['ticker']} by {deal['expiration']}",
-                              tender_instructions(deal, shares, broker.name if broker else "the brokerage"),
+            body = tender_instructions(deal, shares, broker.name if broker else "the brokerage",
+                                       deadline_days=cfg.get("tender_deadline_days_early", 1))
+            if broker and hasattr(broker, "order_text"):
+                body = (f"**Step 1: place this order now:** `{broker.order_text('buy', deal['ticker'], shares, px)}`\n\n"
+                        f"(If the price has moved above the limit, skip the deal and close this issue.)\n\n**Step 2:**\n\n" + body)
+            ref = alerts.open(f"ACTION: buy and tender {shares} {deal['ticker']}",
+                              body,
                               labels=("hunter", "action-needed"))
             led.update_position(pos_id, alert_ref=ref)
         elif cfg.get("alert_on_paper_deals", True):
@@ -183,6 +189,11 @@ def sell_shares(pos, px, notes):
     if broker:
         try:
             broker.sell(pos["ticker"], pos["shares"], px)
+            if hasattr(broker, "order_text") and HOOKS["alerts"]:
+                HOOKS["alerts"].open(f"ACTION: sell {pos['shares']} {pos['ticker']}",
+                                     f"The {pos['ticker']} tender didn't happen, so sell the shares: "
+                                     f"`{broker.order_text('sell', pos['ticker'], pos['shares'], px)}`. Close this issue when done.",
+                                     labels=("hunter", "action-needed"))
         except Exception as e:
             notes.append(f"Broker sell for {pos['ticker']} failed: {e}")
 
@@ -289,11 +300,12 @@ def evaluate(led, src, cfg, rec, notes):
 
     budget = led.max_new_position()
     shares = int(min(cfg["odd_lot_shares"], budget // px))
-    profit = shares * (payout - px)
+    fee = cfg.get("tender_fee", 0.0)
+    profit = shares * (payout - px) - fee
     if shares < 1:
         return "skip", f"floor rule: no room (max new position ${budget:,.0f})"
     if profit < cfg["min_profit_dollars"]:
-        return "skip", f"only ${profit:.0f} profit possible within the floor rule ({shares} sh)"
+        return "skip", f"only ${profit:.0f} profit possible within the floor rule ({shares} sh{', after the $%g tender fee' % fee if fee else ''})"
 
     note = "; ".join([n for n in [note_extra] + terms["notes"] if n])
     if cfg.get("ai_review"):
@@ -310,13 +322,15 @@ def evaluate(led, src, cfg, rec, notes):
             if isinstance(lo, (int, float)) and lo < payout - 0.005:
                 payout = float(lo)
                 note += f"; AI corrected payout to ${lo:.2f}"
-                profit = shares * (payout - px)
+                profit = shares * (payout - px) - fee
                 if profit < cfg["min_profit_dollars"]:
                     return "skip", f"after AI correction only ${profit:.0f} profit"
             if verdict.get("red_flags"):
                 note += "; flags: " + ", ".join(verdict["red_flags"])
 
-    deal = {"ticker": t, "company": rec.get("company", ""), "accession": rec.get("accession", ""),
+    if fee:
+        note += f"; ${fee:g} tender fee"
+    deal = {"ticker": t, "company": rec.get("company", ""), "fee": fee, "accession": rec.get("accession", ""),
             "url": rec.get("url", ""), "payout": payout, "expiration": terms["expiration"],
             "dutch": terms["dutch_auction"], "note": note}
     broker = HOOKS["broker"]

@@ -68,9 +68,14 @@ class Alerts:
                        json={"state": "closed"}, timeout=30).raise_for_status()
 
 
-def tender_instructions(deal, shares, broker_name):
+def tender_instructions(deal, shares, broker_name, deadline_days=1):
+    import datetime as _dt
     exp = deal["expiration"]
-    return f"""**Action needed: tender {shares} shares of {deal['ticker']} before {exp}.**
+    exp_d = exp if isinstance(exp, _dt.date) else _dt.date.fromisoformat(str(exp))
+    due = exp_d - _dt.timedelta(days=deadline_days)
+    while due.weekday() >= 5:
+        due -= _dt.timedelta(days=1)
+    return f"""**Action needed: tender {shares} shares of {deal['ticker']} by noon Eastern on {due}** (brokers need it before the offer's own deadline of {exp}).
 
 The Hunter bought {shares} shares of **{deal['company']} ({deal['ticker']})**. The company is buying shares back at **${deal['payout']:.2f}**, and holders of fewer than 100 shares are bought in full.
 

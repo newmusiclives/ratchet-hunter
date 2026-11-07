@@ -1,0 +1,52 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>The Ratchet - Hunter - 12-month backtest</title>
+<style>
+body{font-family:Georgia,'Iowan Old Style',serif;background:#faf8f3;color:#24221e;max-width:980px;margin:32px auto;padding:0 20px;line-height:1.45}
+h1{font-size:28px;margin:0} h2{font-size:18px;margin:34px 0 10px;border-bottom:1px solid #e3dfd6;padding-bottom:6px}
+.sub{color:#77736b;margin:4px 0 22px;font-family:system-ui,sans-serif;font-size:14px}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}
+.tile{background:#fff;border:1px solid #e3dfd6;border-radius:10px;padding:14px 16px}
+.tile .k{font-family:system-ui,sans-serif;font-size:12px;color:#77736b;text-transform:uppercase;letter-spacing:.05em}
+.tile .v{font-size:24px;margin-top:4px}
+table{width:100%;border-collapse:collapse;font-family:system-ui,sans-serif;font-size:13px;background:#fff}
+th,td{text-align:left;padding:7px 9px;border-bottom:1px solid #eeebe4;vertical-align:top} th{color:#77736b;font-weight:600}
+.muted{color:#8a867d} .up{color:#2c7a4b} .down{color:#b23a2a}
+ul{font-family:system-ui,sans-serif;font-size:13px;padding-left:18px} a{color:#1f5f8b}
+.nav{font-family:system-ui,sans-serif;font-size:13px;margin:0 0 14px}
+.banner{background:#fff4e5;border:1px solid #f0d9b5;border-radius:8px;padding:10px 14px;font-family:system-ui,sans-serif;font-size:13px}
+</style></head><body>
+<h1>The Ratchet &middot; Hunter</h1>
+<p class="sub">12-month backtest &middot; Paper trading report for 2026-10-30 &middot; day 120 &middot; no real money is used</p>
+<div class="tiles">
+ <div class="tile"><div class="k">Account value</div><div class="v">$10,215.57</div></div>
+ <div class="tile"><div class="k">Return so far</div><div class="v up">+2.16%</div></div>
+ <div class="tile"><div class="k">Floor (never below)</div><div class="v">$8,042.07</div></div>
+ <div class="tile"><div class="k">Worst case if every deal fails</div><div class="v">$10,215.57</div></div>
+ <div class="tile"><div class="k">Deals closed / won</div><div class="v">1 / 1</div></div>
+ <div class="tile"><div class="k">Realized deal profit</div><div class="v">$84.15</div></div>
+ <div class="tile"><div class="k">Cash interest earned</div><div class="v">$131.42</div></div>
+ <div class="tile"><div class="k">AI &amp; running costs</div><div class="v">$0.00</div></div>
+</div>
+<h2>Account value vs. floor</h2>
+<svg viewBox="0 0 760 220" width="100%" role="img" aria-label="Equity and floor over time">
+  <line x1="34" y1="186" x2="726" y2="186" stroke="#d6d3cc"/>
+  <polyline points="34.0,168.5 42.0,168.5 50.1,168.5 58.1,168.5 66.2,168.5 74.2,168.5 82.3,168.5 90.3,168.5 98.4,168.5 106.4,168.5 114.5,168.5 122.5,168.5 130.6,168.5 138.6,168.5 146.7,168.5 154.7,168.5 162.7,168.5 170.8,168.5 178.8,168.5 186.9,168.5 194.9,168.5 203.0,168.5 211.0,168.5 219.1,168.5 227.1,168.5 235.2,168.5 243.2,168.5 251.3,168.5 259.3,168.5 267.3,168.5 275.4,168.5 283.4,168.5 291.5,168.5 299.5,168.5 307.6,168.5 315.6,168.5 323.7,168.5 331.7,168.5 339.8,168.5 347.8,168.5 355.9,168.5 363.9,168.5 372.0,168.5 380.0,168.5 388.0,168.5 396.1,168.5 404.1,168.5 412.2,168.5 420.2,168.5 428.3,168.5 436.3,168.5 444.4,166.2 452.4,166.2 460.5,166.2 468.5,166.2 476.6,166.2 484.6,166.2 492.7,166.2 500.7,166.2 508.7,166.2 516.8,166.2 524.8,166.2 532.9,166.2 540.9,166.2 549.0,166.2 557.0,166.2 565.1,166.2 573.1,166.2 581.2,166.2 589.2,166.2 597.3,166.2 605.3,166.2 613.3,166.2 621.4,166.2 629.4,166.2 637.5,166.2 645.5,166.2 653.6,166.2 661.6,166.2 669.7,166.2 677.7,166.2 685.8,166.2 693.8,166.2 701.9,166.2 709.9,166.2 718.0,166.2 726.0,166.2" fill="none" stroke="#b4532a" stroke-width="2" stroke-dasharray="5 4"/>
+  <polyline points="34.0,62.9 42.0,62.9 50.1,62.7 58.1,62.6 66.2,62.5 74.2,62.5 82.3,62.4 90.3,62.2 98.4,62.2 106.4,62.1 114.5,62.1 122.5,62.0 130.6,61.8 138.6,61.8 146.7,61.7 154.7,61.6 162.7,61.6 170.8,61.4 178.8,61.3 186.9,61.3 194.9,61.2 203.0,61.1 211.0,61.0 219.1,60.9 227.1,60.9 235.2,60.8 243.2,60.8 251.3,60.6 259.3,60.6 267.3,60.5 275.4,60.5 283.4,60.4 291.5,60.3 299.5,60.2 307.6,60.2 315.6,60.1 323.7,60.1 331.7,59.9 339.8,59.9 347.8,59.8 355.9,59.8 363.9,59.7 372.0,59.6 380.0,59.6 388.0,59.5 396.1,59.5 404.1,59.4 412.2,54.8 420.2,54.8 428.3,54.7 436.3,54.6 444.4,54.6 452.4,54.4 460.5,54.3 468.5,54.3 476.6,54.2 484.6,54.1 492.7,54.0 500.7,53.9 508.7,53.8 516.8,53.8 524.8,53.7 532.9,53.5 540.9,53.5 549.0,53.4 557.0,53.3 565.1,53.3 573.1,53.1 581.2,53.0 589.2,53.0 597.3,52.9 605.3,52.8 613.3,52.7 621.4,52.6 629.4,52.5 637.5,52.5 645.5,52.4 653.6,52.2 661.6,52.2 669.7,52.1 677.7,52.0 685.8,52.0 693.8,51.8 701.9,51.7 709.9,51.7 718.0,51.6 726.0,51.5" fill="none" stroke="#1f5f8b" stroke-width="2.5"/>
+  <text x="726" y="43.5" text-anchor="end" fill="#1f5f8b" font-size="12">Equity $10,216</text>
+  <text x="726" y="182.2" text-anchor="end" fill="#b4532a" font-size="12">Floor $8,042</text>
+  <text x="34" y="210" fill="#77736b" font-size="11">2026-07-02</text>
+  <text x="726" y="210" text-anchor="end" fill="#77736b" font-size="11">2026-10-30</text>
+</svg>
+<h2>About this run</h2>
+<ul><li>BACKTEST of 1 real SEC filings, 2026-07-02 to 2026-10-30. Rules only (AI reviewer off).</li><li>Prices are daily closes; trades assume you bought at the close the day after the filing.</li>
+<li>Room for a new deal under the floor rule: $8,693.98</li>
+<li>Cash earns the T-bill rate: 4.30% a year</li></ul>
+<h2>Open deals</h2><p class='muted'>None yet.</p>
+<h2>Closed deals <span style="font:13px system-ui;color:#8a867d">&middot; <a href="trades.csv">download all trades (CSV)</a></span></h2><table><thead><tr><th>Ticker</th><th>Result</th><th>Cost</th><th>Proceeds</th><th>P&amp;L</th><th>Closed</th></tr></thead><tbody><tr><td>PFDAP</td><td>settled</td><td>$2,143.35</td><td>$2,227.50</td><td><b class='up'>+84.15</b></td><td>2026-09-07</td></tr></tbody></table>
+<h2>Every filing the Hunter looked at</h2><table><thead><tr><th>Seen</th><th>Decision</th><th>Why</th></tr></thead><tbody><tr><td>2026-08-04</td><td><b>BUY</b></td><td>PFD PFD Corp: 99 sh @ $21.65 -&gt; $22.50 (3.9%, ~49% annualized), +$84 if it completes</td></tr></tbody></table>
+<h2>Activity log</h2><ul><li><span class='muted'>2026-09-11</span> <b>ratchet</b> Floor raised by $42.08 to $8,042.07 (half of $84.15 realized this week)</li><li><span class='muted'>2026-09-07</span> <b>settled</b> PFDAP: proceeds $2,227.50, P&amp;L $+84.15. Tender completed; odd lot accepted in full.</li><li><span class='muted'>2026-08-04</span> <b>buy</b> 99 PFDAP @ $21.65 = $2,143.35; tender pays $22.50, expires 2026-09-02</li><li><span class='muted'>2026-07-02</span> <b>open</b> Paper account opened with $10,000.00; floor $8,000.00</li></ul>
+<p class="banner">Paper results assume odd-lot tenders complete at the stated price once the offer expires,
+unless a filing shows the offer was terminated. Dutch auctions are counted at the low end of the range.
+Real results can differ.</p>
+</body></html>

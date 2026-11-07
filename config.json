@@ -31,6 +31,12 @@
   "alert_on_paper_deals": true,
   "alert_assignees": [],
   "broker_mode": "simulated",
+  "broker_name": "Interactive Brokers",
+  "tender_fee": 0.0,
+  "tender_deadline_days_early": 1,
+  "limit_slippage_pct": 1.0,
+  "cash_fund": "SGOV",
+  "cash_buffer": 2000.0,
 
   "data_dir": "data",
   "report_dir": "reports"
