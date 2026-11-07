@@ -43,7 +43,8 @@ class Cache:
             raise RuntimeError("offline: not in cache")
         if not self._edgar:
             from edgar import Edgar
-            self._edgar = Edgar(cfg["sec_user_agent"])
+            import os
+            self._edgar = Edgar(os.environ.get("SEC_USER_AGENT") or cfg["sec_user_agent"])
         return self._edgar
 
     def _json(self, name, make):
