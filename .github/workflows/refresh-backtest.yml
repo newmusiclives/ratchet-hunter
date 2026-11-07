@@ -44,5 +44,4 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add published
           git commit -m "Refresh backtest and dials $(date -u +%F)" || echo "No changes"
-          git pull --rebase origin main
-          git push
+          for i in 1 2 3; do git pull --rebase origin main && git push && break; sleep 5; done
