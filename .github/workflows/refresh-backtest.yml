@@ -42,6 +42,13 @@ jobs:
           python -u backtest.py
           cp reports/backtest_report.html published/backtest.html
 
+      - name: Keep the downloaded data for analysis (7 days)
+        uses: actions/upload-artifact@v4
+        with:
+          name: backtest-data
+          path: data/backtest_cache
+          retention-days: 7
+
       - name: Rebuild the dials page
         run: python -u dials.py
 
