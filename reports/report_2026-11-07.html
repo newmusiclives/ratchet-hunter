@@ -1,0 +1,44 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>The Ratchet - Hunter - 2026-11-07</title>
+<style>
+body{font-family:Georgia,'Iowan Old Style',serif;background:#faf8f3;color:#24221e;max-width:980px;margin:32px auto;padding:0 20px;line-height:1.45}
+h1{font-size:28px;margin:0} h2{font-size:18px;margin:34px 0 10px;border-bottom:1px solid #e3dfd6;padding-bottom:6px}
+.sub{color:#77736b;margin:4px 0 22px;font-family:system-ui,sans-serif;font-size:14px}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}
+.tile{background:#fff;border:1px solid #e3dfd6;border-radius:10px;padding:14px 16px}
+.tile .k{font-family:system-ui,sans-serif;font-size:12px;color:#77736b;text-transform:uppercase;letter-spacing:.05em}
+.tile .v{font-size:24px;margin-top:4px}
+table{width:100%;border-collapse:collapse;font-family:system-ui,sans-serif;font-size:13px;background:#fff}
+th,td{text-align:left;padding:7px 9px;border-bottom:1px solid #eeebe4;vertical-align:top} th{color:#77736b;font-weight:600}
+.muted{color:#8a867d} .up{color:#2c7a4b} .down{color:#b23a2a}
+ul{font-family:system-ui,sans-serif;font-size:13px;padding-left:18px} a{color:#1f5f8b}
+.nav{font-family:system-ui,sans-serif;font-size:13px;margin:0 0 14px}
+.banner{background:#fff4e5;border:1px solid #f0d9b5;border-radius:8px;padding:10px 14px;font-family:system-ui,sans-serif;font-size:13px}
+</style></head><body>
+<p class='nav'><a href='index.html'>Live paper run</a> &middot; <a href='backtest.html'>12-month backtest</a> &middot; <a href='dials.html'>Dials</a></p><h1>The Ratchet &middot; Hunter</h1>
+<p class="sub">Paper trading report for 2026-11-07 &middot; day 0 &middot; no real money is used</p>
+<div class="tiles">
+ <div class="tile"><div class="k">Account value</div><div class="v">$10,000.00</div></div>
+ <div class="tile"><div class="k">Return so far</div><div class="v up">+0.00%</div></div>
+ <div class="tile"><div class="k">Floor (never below)</div><div class="v">$8,000.00</div></div>
+ <div class="tile"><div class="k">Worst case if every deal fails</div><div class="v">$8,001.03</div></div>
+ <div class="tile"><div class="k">Deals closed / won</div><div class="v">0 / 0</div></div>
+ <div class="tile"><div class="k">Realized deal profit</div><div class="v">$0.00</div></div>
+ <div class="tile"><div class="k">Cash interest earned</div><div class="v">$0.00</div></div>
+ <div class="tile"><div class="k">AI &amp; running costs</div><div class="v">$0.00</div></div>
+</div>
+<h2>Account value vs. floor</h2>
+<p class='muted'>The chart appears after the second day.</p>
+<h2>Today</h2>
+<ul><li>EDGAR returned 45 document(s) in 23 filing(s) mentioning odd lots.</li><li>Cash interest added today: $0.00</li>
+<li>Room for a new deal under the floor rule: $4.12</li>
+<li>Cash earns the T-bill rate: 4.30% a year</li></ul>
+<h2>Open deals</h2><table><thead><tr><th>Ticker</th><th>Company</th><th>Shares</th><th>Paid</th><th>Tender pays</th><th>Expected profit</th><th>Expires</th><th>Notes</th></tr></thead><tbody><tr><td><a href='https://www.sec.gov/Archives/edgar/data/1351636/000114036126040176/ny20082824x1_exa1a.htm'>SSTI</a></td><td>SOUNDTHINKING, INC.</td><td>206</td><td>$8.34</td><td>$10.50</td><td>$444.96</td><td>2026-11-17</td><td></td></tr><tr><td><a href='https://www.sec.gov/Archives/edgar/data/875657/000119312526435071/d153599dex99a1d.htm'>ULBI</a></td><td>ULTRALIFE CORP</td><td>255</td><td>$15.66</td><td>$18.00</td><td>$596.70</td><td>2026-12-03</td><td></td></tr></tbody></table>
+<h2>Closed deals <span style="font:13px system-ui;color:#8a867d">&middot; <a href="trades.csv">download all trades (CSV)</a></span></h2><p class='muted'>None yet.</p>
+<h2>Every filing the Hunter looked at</h2><table><thead><tr><th>Seen</th><th>Decision</th><th>Why</th></tr></thead><tbody><tr><td>2026-11-07</td><td><b>BUY</b></td><td>SSTI SOUNDTHINKING, INC.: 206 sh @ $8.34 -&gt; $10.50 (25.9%, ~945% annualized), +$445 if it completes</td></tr><tr><td>2026-11-07</td><td><b>skip</b></td><td>CPAC CEMENTOS PACASMAYO SAA: takeover search hit, but not an offer for all shares</td></tr><tr><td>2026-11-07</td><td><b>skip</b></td><td>CPAC CEMENTOS PACASMAYO SAA: takeover search hit, but not an offer for all shares</td></tr><tr><td>2026-11-07</td><td><b>skip</b></td><td>PCRX Pacira BioSciences, Inc.: premium only 0.2% (price $36.43 vs offer $36.50)</td></tr><tr><td>2026-11-07</td><td><b>skip</b></td><td>ACVA ACV Auctions Inc.: expires too soon (-23 days)</td></tr><tr><td>2026-11-07</td><td><b>skip</b></td><td>ACVA ACV Auctions Inc.: expires too soon (-25 days)</td></tr><tr><td>2026-11-07</td><td><b>skip</b></td><td>ACVA ACV Auctions Inc.: expires too soon (-38 days)</td></tr><tr><td>2026-11-07</td><td><b>skip</b></td><td>ACVA ACV Auctions Inc.: expires too soon (-38 days)</td></tr><tr><td>2026-11-07</td><td><b>skip</b></td><td>ACVA ACV Auctions Inc.: could not read the expiration date</td></tr><tr><td>2026-11-07</td><td><b>BUY</b></td><td>ULBI ULTRALIFE CORP: 255 sh @ $15.66 -&gt; $18.00 (14.9%, ~210% annualized), +$597 if it completes</td></tr><tr><td>2026-11-07</td><td><b>skip</b></td><td>CVAT Cavitation Technologies, Inc.: could not read the offer price</td></tr><tr><td>2026-11-07</td><td><b>skip</b></td><td>INVE INVE Technologies, Inc.: no clear odd-lot priority</td></tr><tr><td>2026-11-07</td><td><b>skip</b></td><td>? Highlands REIT, Inc.: no ticker found (not exchange-listed?)</td></tr><tr><td>2026-11-07</td><td><b>skip</b></td><td>? Highlands REIT, Inc.: no ticker found (not exchange-listed?)</td></tr><tr><td>2026-11-07</td><td><b>skip</b></td><td>ABUS Arbutus Biopharma Corp: expires too soon (-39 days)</td></tr><tr><td>2026-11-07</td><td><b>skip</b></td><td>ABUS Arbutus Biopharma Corp: expires too soon (-39 days)</td></tr><tr><td>2026-11-07</td><td><b>skip</b></td><td>? ARES STRATEGIC INCOME FUND: no ticker found (not exchange-listed?)</td></tr><tr><td>2026-11-07</td><td><b>skip</b></td><td>? ARES STRATEGIC INCOME FUND: no ticker found (not exchange-listed?)</td></tr><tr><td>2026-11-07</td><td><b>skip</b></td><td>MDT Medtronic plc: share-exchange offer (v1 handles cash only)</td></tr><tr><td>2026-11-07</td><td><b>skip</b></td><td>UTMD UTAH MEDICAL PRODUCTS INC: expires too soon (-31 days)</td></tr><tr><td>2026-11-07</td><td><b>skip</b></td><td>UTMD UTAH MEDICAL PRODUCTS INC: expires too soon (-31 days)</td></tr><tr><td>2026-11-07</td><td><b>skip</b></td><td>MDT Medtronic plc: share-exchange offer (v1 handles cash only)</td></tr><tr><td>2026-11-07</td><td><b>skip</b></td><td>? VISTA CREDIT STRATEGIC LENDING CORP.: no ticker found (not exchange-listed?)</td></tr></tbody></table>
+<h2>Activity log</h2><ul><li><span class='muted'>2026-11-07</span> <b>buy</b> 206 SSTI @ $8.34 = $1,718.04; tender pays $10.50, expires 2026-11-17</li><li><span class='muted'>2026-11-07</span> <b>buy</b> 255 ULBI @ $15.66 = $3,993.30; tender pays $18.00, expires 2026-12-03</li><li><span class='muted'>2026-11-07</span> <b>open</b> Paper account opened with $10,000.00; floor $8,000.00</li></ul>
+<p class="banner">Paper results assume odd-lot tenders complete at the stated price once the offer expires,
+unless a filing shows the offer was terminated. Dutch auctions are counted at the low end of the range.
+Real results can differ.</p>
+</body></html>
