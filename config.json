@@ -19,7 +19,7 @@
   "max_single_deal_cost": 10000.0,
   "skip_if_financing_condition": true,
 
-  "engines": {"odd_lot": true, "takeover": true},
+  "engines": {"odd_lot": true, "takeover": false},
   "takeover_assumed_drop": 0.35,
   "takeover_max_position": 4000.0,
   "takeover_min_annualized_pct": 10.0,
