@@ -216,6 +216,10 @@ def run(days=365, offline=False, cfg=None, cache_dir=CACHE, end=None, quiet=Fals
     path = report.write(led, cfg, equity, notes, 0.0, 0.0, out, title="12-month backtest",
                         filename="backtest_report.html", seen_limit=500)
     say("")
+    say("Deals:")
+    for p in led.closed_positions() + led.open_positions():
+        say(f"  {p['ticker']:6} {(p.get('engine') or 'odd-lot'):15} {p['status']:12} {p['shares']:>5} sh @ ${p['price_paid']:.2f} "
+            f"-> ${p['payout_price']:.2f}  opened {p['opened']}  closed {p['closed'] or '-':10}  P&L {(p['pnl'] or 0):+,.2f}")
     say(report.summary_line(led, cfg, equity))
     say(f"Open this file to see the year: {path}")
     return led, equity

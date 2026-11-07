@@ -51,4 +51,9 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add published
           git commit -m "Refresh backtest and dials $(date -u +%F)" || echo "No changes"
-          for i in 1 2 3; do git pull --rebase origin main && git push && break; sleep 5; done
+          ok=0
+          for i in 1 2 3; do
+            git pull --rebase --autostash origin main && git push && ok=1 && break
+            sleep 5
+          done
+          if [ "$ok" != 1 ]; then echo "Could not save to GitHub"; exit 1; fi
