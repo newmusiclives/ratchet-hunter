@@ -52,6 +52,32 @@ def test_real_world_wording():
                       "reported sale price of the Shares was $37.25 per Share.")["stated_prices"]
 
 
+def test_worst_two_stress_test():
+    """Worst-2 sizing: many mid-size deals allowed, but the two worst failures never exceed the allowance."""
+    import json as _json
+    with tempfile.TemporaryDirectory() as tmp:
+        c = cfg(tmp)
+        c["stress_worst_deals"] = 2
+        led = Ledger(Path(tmp) / "t.db", c, today=dt.date(2026, 11, 9))
+        bought = 0
+        for i in range(10):
+            room = led.max_new_position(0.35)
+            size = min(room, 2800.0)
+            if size < 100:
+                break
+            led.buy({"ticker": f"T{i}", "company": "", "accession": "", "url": "", "payout": 1.0,
+                     "expiration": dt.date(2026, 12, 1), "dutch": False, "drop": 0.35}, 1, size)
+            bought += 1
+        losses = sorted((p["cost"] * 0.35 for p in led.open_positions()), reverse=True)
+        assert sum(losses[:2]) <= 2000 + 1e-6
+        assert bought >= 3, bought                       # old all-fail rule allowed only ~$5,700 in total
+        assert sum(p["cost"] for p in led.open_positions()) > 5714
+        # With the old rule (every deal fails at once) the same book would breach the floor:
+        c2 = dict(c, stress_worst_deals=None)
+        led.cfg = c2
+        assert led.stressed_value() < led.get("floor")
+
+
 def test_floor_rule_math():
     with tempfile.TemporaryDirectory() as tmp:
         c = cfg(tmp)
@@ -74,7 +100,9 @@ def test_full_cycle():
         # FIRP is limited by the floor rule, not by the 99-share cap.
         assert held["FIRP"]["shares"] < 99
         assert led.stressed_value() >= led.get("floor") - 1e-6
-        assert led.max_new_position() < 95  # no room left for even one more FIRP share
+        # Worst-2 stress test: the two worst failures together stay within the $2,000 allowance
+        losses = sorted((p["cost"] * 0.25 for p in led.open_positions()), reverse=True)
+        assert sum(losses[:2]) <= 2000 + 1e-6
 
         # Two weeks later: BRCH terminates and its price falls; ALDR has final results.
         src_prices = json.loads((FIX / "prices.json").read_text())

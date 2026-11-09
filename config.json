@@ -6,6 +6,7 @@
   "starting_capital": 10000.0,
   "max_loss": 2000.0,
   "assumed_drop_if_deal_fails": 0.25,
+  "stress_worst_deals": 2,
   "cash_yield_annual": 0.043,
 
   "ratchet_share_of_profit": 0.5,

@@ -96,16 +96,42 @@ class Ledger:
         except (ValueError, TypeError):
             return self.cfg["assumed_drop_if_deal_fails"]
 
+    def _losses(self):
+        """What each open deal would lose if it failed (cost x its assumed drop)."""
+        return sorted((p["cost"] * self._drop(p) for p in self.open_positions()), reverse=True)
+
+    def _k(self):
+        k = self.cfg.get("stress_worst_deals")
+        return int(k) if k else None   # None = old rule: every deal fails at once
+
     def stressed_value(self, extra_cost=0.0, extra_drop=None):
-        """Account value if every open deal failed and each stock fell by its assumed drop."""
+        """Account value in the stress test: the WORST k open deals fail at the same time
+        (k = stress_worst_deals; if unset, all of them). Must stay at or above the floor."""
         extra_drop = self.cfg["assumed_drop_if_deal_fails"] if extra_drop is None else extra_drop
-        held = sum(p["cost"] * (1 - self._drop(p)) for p in self.open_positions())
-        return self.get("cash") - extra_cost + held + extra_cost * (1 - extra_drop)
+        losses = self._losses() + ([extra_cost * extra_drop] if extra_cost else [])
+        losses.sort(reverse=True)
+        k = self._k()
+        hit = sum(losses[:k] if k else losses)
+        held = sum(p["cost"] for p in self.open_positions()) + extra_cost
+        return self.get("cash") - extra_cost + held - hit
 
     def max_new_position(self, drop=None):
-        """Largest purchase that keeps the stressed value at or above the floor."""
+        """Largest purchase that keeps the stress-test value at or above the floor (cash only, no margin)."""
         d = self.cfg["assumed_drop_if_deal_fails"] if drop is None else drop
-        room = (self.stressed_value() - self.get("floor")) / d
+        held = sum(p["cost"] for p in self.open_positions())
+        budget = self.get("cash") + held - self.get("floor")      # total loss the floor allows
+        losses = self._losses()
+        k = self._k()
+        if not k:
+            room_loss = budget - sum(losses)
+        else:
+            top = losses[:k]
+            if sum(top) > budget + 1e-9:
+                room_loss = 0.0
+            else:
+                kth = top[k - 1] if len(top) >= k else 0.0   # a new deal smaller than this doesn't change the worst-k
+                room_loss = max(budget - sum(losses[:k - 1]), kth)
+        room = max(0.0, room_loss) / d
         return max(0.0, min(room, self.get("cash"), self.cfg["max_single_deal_cost"]))
 
     # --- money movements ---------------------------------------------------

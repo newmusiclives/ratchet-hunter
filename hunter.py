@@ -523,6 +523,20 @@ def evaluate_merger(led, src, cfg, rec, text, notes):
     return "BUY", f"{shares} sh @ ${px:.2f} -> ${payout:.2f} at closing ({premium:.1f}%, ~{ann:.0f}%/yr), +${profit:.0f} if it completes"
 
 
+def derisk(led, src, cfg, notes):
+    """If the stress test fails (usually right after a deal has failed), sell the open deal with the
+    biggest potential loss at market until it passes again. Keeps the $2,000 promise intact."""
+    guard = 0
+    while led.open_positions() and led.stressed_value() < led.get("floor") - 1e-6 and guard < 20:
+        guard += 1
+        pos = max(led.open_positions(), key=lambda p: p["cost"] * led._drop(p))
+        px = _safe_price(src, pos["ticker"]) or pos["price_paid"]
+        sell_shares(pos, px, notes)
+        led.close(pos, round(px * pos["shares"], 2), "reduced",
+                  f"Sold at ${px:.2f} to keep the worst-case stress test above the floor after an earlier loss.")
+        notes.append(f"De-risked: sold {pos['ticker']} to restore the safety margin.")
+
+
 def mark_to_market(led, src):
     value = led.get("cash")
     for p in led.open_positions():
@@ -561,6 +575,7 @@ def run(cfg, offline=None, today=None, hooks=None):
     interest = led.accrue_cash_yield(rate)
     monthly_cost(led, cfg)
     settle(led, src, cfg, notes)
+    derisk(led, src, cfg, notes)
     hunt(led, src, cfg, notes)
     lift = led.maybe_ratchet()
     equity = mark_to_market(led, src)
