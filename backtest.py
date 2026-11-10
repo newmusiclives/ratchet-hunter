@@ -205,6 +205,7 @@ def run(days=365, offline=False, cfg=None, cache_dir=CACHE, end=None, quiet=Fals
         led.accrue_cash_yield(src.tbill_rate())
         hunter.monthly_cost(led, cfg)
         hunter.settle(led, src, cfg, notes)
+        led.maybe_reset_floor(hunter.mark_to_market(led, src, cfg))
         hunter.derisk(led, src, cfg, notes)
         hunter.hunt(led, src, cfg, notes)
         led.maybe_ratchet()

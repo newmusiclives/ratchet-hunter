@@ -4,8 +4,8 @@ The Floor Rule (the heart of the system):
     If every open deal failed and its stock fell by `assumed_drop_if_deal_fails`,
     the account must still be worth at least the floor.
     cash + sum(position cost * (1 - drop)) >= floor
-The floor starts at starting_capital - max_loss ($8,000) and only ever rises
-(the Ratchet). No margin, no shorting, no options: cash only.
+The floor starts at starting_capital - max_loss ($8,000) and rises with the Ratchet.
+With loss_rule "yearly_pct" it is reset each year to (1 - max_loss_pct) of the account value. No margin, no shorting, no options: cash only.
 """
 import json
 import sqlite3
@@ -207,6 +207,25 @@ class Ledger:
         self.set("realized_since_ratchet", 0.0)
         self.set("last_ratchet", self.today.isoformat())
         return lift
+
+    def maybe_reset_floor(self, equity):
+        """Per-year loss rule: on each anniversary of the start, the floor is reset to
+        (1 - max_loss_pct) of the account's value that day. Within the year it still ratchets up.
+        Returns the new floor, or None if nothing changed."""
+        if self.cfg.get("loss_rule") != "yearly_pct":
+            return None
+        start = dt.date.fromisoformat(self.get("year_start") or self.get("start_day"))
+        if (self.today - start).days < 365:
+            return None
+        while (self.today - start).days >= 365:
+            start = start + dt.timedelta(days=365)
+        new = round(equity * (1 - self.cfg.get("max_loss_pct", 0.20)), 2)
+        old = self.get("floor")
+        self.set("floor", new)
+        self.set("year_start", start.isoformat())
+        self.log("new year", f"New account year: floor reset from ${old:,.2f} to ${new:,.2f} "
+                             f"({self.cfg.get('max_loss_pct', 0.20) * 100:.0f}% below today's value ${equity:,.2f}).")
+        return new
 
     def record_equity(self, equity):
         self.db.execute("INSERT OR REPLACE INTO equity VALUES (?,?,?,?)",

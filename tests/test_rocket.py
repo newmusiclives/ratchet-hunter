@@ -120,6 +120,23 @@ def test_hunter_run_with_rocket_offline():
         assert eq > 0
 
 
+def test_yearly_floor_reset():
+    with tempfile.TemporaryDirectory() as tmp:
+        c = cfg(tmp)
+        c.update(loss_rule="yearly_pct", max_loss_pct=0.20)
+        led = Ledger(Path(tmp) / "r.db", c, today=dt.date(2026, 1, 5))
+        assert led.maybe_reset_floor(10000) is None                 # not a year yet
+        led.today = dt.date(2027, 1, 5)
+        led.set("cash", 9000.0)                                      # a losing year
+        assert led.maybe_reset_floor(9000) == 7200.0                 # new year: may lose 20% of $9,000
+        assert led.maybe_reset_floor(9000) is None                   # once per year
+        led.today = dt.date(2028, 1, 6)
+        assert led.maybe_reset_floor(15000) == 12000.0               # after a good year the floor rises
+        c["loss_rule"] = "lifetime"
+        led.today = dt.date(2029, 1, 7)
+        assert led.maybe_reset_floor(5000) is None                   # the old rule never resets
+
+
 if __name__ == "__main__":
     for name, fn in list(globals().items()):
         if name.startswith("test_"):

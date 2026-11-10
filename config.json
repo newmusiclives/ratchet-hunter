@@ -5,6 +5,8 @@
 
   "starting_capital": 10000.0,
   "max_loss": 2000.0,
+  "loss_rule": "yearly_pct",
+  "max_loss_pct": 0.20,
   "assumed_drop_if_deal_fails": 0.25,
   "stress_worst_deals": 2,
   "cash_yield_annual": 0.043,
@@ -24,6 +26,7 @@
   "backtest_engines": {"odd_lot": true, "takeover": false, "merger": false, "rocket": false},
   "experimental_engines": ["takeover", "merger", "rocket"],
   "rocket_budget": 1500.0,
+  "rocket_budget_share": 0.15,
   "rocket_min_budget": 300.0,
   "rocket_mode": "whole",
   "rocket_strike_pct": 100,

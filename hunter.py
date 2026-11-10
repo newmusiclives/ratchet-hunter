@@ -590,6 +590,10 @@ def run(cfg, offline=None, today=None, hooks=None):
     interest = led.accrue_cash_yield(rate)
     monthly_cost(led, cfg)
     settle(led, src, cfg, notes)
+    new_floor = led.maybe_reset_floor(mark_to_market(led, src, cfg))
+    if new_floor is not None:
+        notes.append(f"New account year: the floor is now ${new_floor:,.2f}, "
+                     f"{cfg.get('max_loss_pct', 0.20) * 100:.0f}% below the account's value today.")
     derisk(led, src, cfg, notes)
     hunt(led, src, cfg, notes)
     import rocket

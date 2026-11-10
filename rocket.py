@@ -111,6 +111,11 @@ def value_per_share(pos, src, today, cfg):
     return bs_call(S, d["strike"], T, rate_from_irx(irx if irx else 4.0), _q(cfg), vol_for(vix, k_ratio, cfg))
 
 
+def mark_value(led, src, cfg):
+    import hunter
+    return hunter.mark_to_market(led, src, cfg)
+
+
 def settle(led, src, cfg, notes):
     for pos in led.open_positions():
         if pos.get("engine") != "rocket":
@@ -138,7 +143,10 @@ def hunt(led, src, cfg, notes):
     if any(p.get("engine") == "rocket" for p in led.open_positions()):
         return
     room = led.max_new_position(drop=1.0)
-    budget = min(cfg.get("rocket_budget", 2000.0), room)
+    cap = cfg.get("rocket_budget", 2000.0)
+    if cfg.get("rocket_budget_share"):                      # grows with the account
+        cap = cfg["rocket_budget_share"] * mark_value(led, src, cfg)
+    budget = min(cap, room)
     if budget < cfg.get("rocket_min_budget", 300.0):
         notes.append(f"Rocket: waiting. The floor rule leaves ${room:,.0f} of room (needs "
                      f"${cfg.get('rocket_min_budget', 300.0):,.0f}); open deals are using the risk budget.")
