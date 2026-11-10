@@ -111,7 +111,12 @@ def one_year(ser, start, equity, floor, cfg):
 def chain(ser, start, years, cfg, capital=10000.0, max_loss=2000.0):
     eq, floor, rows = capital, capital - max_loss, []
     day = start
+    rule = cfg.get("loss_rule", "lifetime")
     for _ in range(years):
+        if rule == "yearly_2000":          # at most $2,000 lost in any one year
+            floor = max(floor if cfg.get("keep_ratchet") else 0.0, eq - max_loss)
+        elif rule == "yearly_20pct":       # at most 20% of the account lost in any one year
+            floor = max(floor if cfg.get("keep_ratchet") else 0.0, eq * (1 - max_loss / capital))
         r = one_year(ser, day, eq, floor, cfg)
         rows.append(r)
         eq, floor = r["equity1"], r["floor1"]
@@ -244,6 +249,42 @@ def main():
                  pct(cagr(recent['whole'], 'spx')), pct(cagr(longrun['whole'], 'spx'))]
     lines.append(f"[S&P 500 TR] 1-yr median {spx_line[1]}, worst {spx_line[2]} | 10-yr median {spx_line[6]} | "
                  f"last 10 yrs {spx_line[9]}/yr | since 2000 {spx_line[10]}/yr")
+    # 4) the loss rule: lifetime $2,000 vs per-year limits (chained, with the ratchet inside each year)
+    rule_rows = []
+    for rule, label in [("lifetime", "$2,000 once, for life"), ("yearly_2000", "$2,000 a year"),
+                        ("yearly_20pct", "20% of the account a year")]:
+        for m in modes:
+            spans = []
+            for s0 in month_starts(first, dt.date.fromisoformat(ser.days[-1]) - dt.timedelta(days=3653)):
+                c = dict(mode_cfg(m, ser, s0, latest), loss_rule=rule)
+                rows = chain(ser, s0, 10, c)
+                spans.append((cagr(rows, "ret"), cagr(rows, "spx"), min(r["ret"] for r in rows), rows[-1]["equity1"]))
+            c = dict(mode_cfg(m, ser, recent_start, latest), loss_rule=rule)
+            rc = cagr(chain(ser, recent_start, 10, c), "ret")
+            c = dict(mode_cfg(m, ser, long_start, latest), loss_rule=rule)
+            lr = chain(ser, long_start, n_long, c)
+            peak, dd = 0, 0
+            for r in lr:
+                peak = max(peak, r["equity0"])
+                dd = min(dd, r["equity1"] / peak - 1)
+            row = [label, m, pct(st.median([x[0] for x in spans])), pct(min(x[0] for x in spans)),
+                   f"{sum(x[0] > x[1] for x in spans) / len(spans) * 100:.0f}%",
+                   f"{sum(x[0] >= 0.13 for x in spans) / len(spans) * 100:.0f}%", pct(min(x[2] for x in spans)),
+                   pct(dd), pct(rc), pct(cagr(lr, "ret")), f"${lr[-1]['equity1']:,.0f}"]
+            rule_rows.append(row)
+            lines.append("[rule] " + " | ".join(row))
+    peak, dd = 0, 0
+    g = 10000.0
+    for r in longrun["whole"]:
+        peak = max(peak, g)
+        g *= 1 + r["spx"]
+        dd = min(dd, g / peak - 1)
+    rule_rows.append(["S&P 500 (with dividends)", "", pct(st.median([x["spx"] for x in tens["whole"]])),
+                      pct(min(x["spx"] for x in tens["whole"])), "",
+                      f"{sum(x['spx'] >= 0.13 for x in tens['whole']) / len(tens['whole']) * 100:.0f}%",
+                      pct(min(x["spx_worst"] for x in tens["whole"])), pct(dd),
+                      pct(cagr(recent["whole"], "spx")), pct(cagr(longrun["whole"], "spx")), f"${g:,.0f}"])
+    lines.append("[rule] " + " | ".join(rule_rows[-1]))
     for l in lines:
         print(l, flush=True)
 
@@ -276,6 +317,9 @@ Replayed on every month since 1994 with real SPY, VIX and T-bill data up to {ser
 <p class='note'><b>whole</b> = real contracts of 100 shares, scaled so one contract costs against a $10,000 account what it costs today
 (SPY ${latest:,.2f}); with $2,000 that means one contract at a strike above today's price. <b>fractional</b> = the idea in theory,
 at-the-money and divisible; doing it for real needs an account of roughly $75,000 or more.</p>
+<h2>Which loss rule works best?</h2>
+{table(["loss rule", "sizing", "10-yr median /yr", "worst 10-yr /yr", "beat S&P (10-yr spans)", "10-yr spans ≥13%/yr", "worst single year", "deepest fall since 2000", "last 10 yrs /yr", "since 2000 /yr", "$10k since 2000 became"], rule_rows)}
+<p class='note'>Chained 10-year spans, one start per month since 1994. "Deepest fall" is measured at each year's end, peak to trough.</p>
 <h2>The last ten years, year by year (whole contracts)</h2>
 {table(["year starting", "S&P 500", "Rocket account", "option cost", "strike vs SPY", "account at end", "floor at end"], yr_rows)}
 <h2>How the options are priced</h2>
