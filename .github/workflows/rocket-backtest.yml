@@ -1,0 +1,40 @@
+name: Rocket backtest
+
+on:
+  schedule:
+    # 2nd of each month, 14:43 UTC
+    - cron: "43 14 2 * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+concurrency:
+  group: hunter
+  cancel-in-progress: false
+
+jobs:
+  rocket:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install
+        run: pip install requests
+      - name: Replay every year since 1994 (SPY, VIX, T-bills)
+        run: python -u rocket_backtest.py
+      - name: Save the page
+        run: |
+          git config user.name "ratchet-hunter-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add published/rocket.html reports/rocket_years_*.csv
+          git commit -m "Rocket backtest $(date -u +%F)" || echo "No changes"
+          ok=0
+          for i in 1 2 3; do
+            git pull --rebase --autostash origin main && git push && ok=1 && break
+            sleep 5
+          done
+          if [ "$ok" != 1 ]; then echo "Could not save to GitHub"; exit 1; fi

@@ -24,7 +24,7 @@ for i, name in enumerate(accounts or [""]):
         shutil.copy(src / "latest.html", dest / "index.html")
         if i == 0 and name:
             shutil.copy(src / "latest.html", site / "index.html")
-for f in ("backtest.html", "dials.html"):
+for f in ("backtest.html", "dials.html", "rocket.html"):
     if (HERE / "published" / f).exists():
         shutil.copy(HERE / "published" / f, site / f)
 print("site built:", sorted(str(p.relative_to(site)) for p in site.rglob("index.html")))

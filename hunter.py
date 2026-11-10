@@ -146,7 +146,11 @@ def settle_merger(led, src, cfg, pos, notes):
 
 
 def settle(led, src, cfg, notes):
+    import rocket
+    rocket.settle(led, src, cfg, notes)
     for pos in led.open_positions():
+        if pos.get("engine") == "rocket":
+            continue
         if pos.get("engine") == "merger":
             settle_merger(led, src, cfg, pos, notes)
             continue
@@ -530,18 +534,29 @@ def derisk(led, src, cfg, notes):
     while led.open_positions() and led.stressed_value() < led.get("floor") - 1e-6 and guard < 20:
         guard += 1
         pos = max(led.open_positions(), key=lambda p: p["cost"] * led._drop(p))
-        px = _safe_price(src, pos["ticker"]) or pos["price_paid"]
-        sell_shares(pos, px, notes)
+        px = _pos_price(led, src, cfg, pos)
+        if pos.get("engine") != "rocket":          # the rocket is paper-only: nothing at the broker
+            sell_shares(pos, px, notes)
         led.close(pos, round(px * pos["shares"], 2), "reduced",
                   f"Sold at ${px:.2f} to keep the worst-case stress test above the floor after an earlier loss.")
         notes.append(f"De-risked: sold {pos['ticker']} to restore the safety margin.")
 
 
-def mark_to_market(led, src):
+def _pos_price(led, src, cfg, pos):
+    if pos.get("engine") == "rocket":
+        import rocket
+        try:
+            v = rocket.value_per_share(pos, src, led.today, cfg)
+        except Exception:
+            v = None
+        return pos["price_paid"] if v is None else v
+    return _safe_price(src, pos["ticker"]) or pos["price_paid"]
+
+
+def mark_to_market(led, src, cfg=None):
     value = led.get("cash")
     for p in led.open_positions():
-        px = _safe_price(src, p["ticker"]) or p["price_paid"]
-        value += px * p["shares"]
+        value += _pos_price(led, src, cfg or led.cfg, p) * p["shares"]
     return value
 
 
@@ -577,6 +592,11 @@ def run(cfg, offline=None, today=None, hooks=None):
     settle(led, src, cfg, notes)
     derisk(led, src, cfg, notes)
     hunt(led, src, cfg, notes)
+    import rocket
+    try:
+        rocket.hunt(led, src, cfg, notes)
+    except Exception as e:
+        notes.append(f"Rocket step failed: {e}")
     lift = led.maybe_ratchet()
     equity = mark_to_market(led, src)
     led.record_equity(equity)

@@ -94,7 +94,7 @@ def write(led, cfg, equity, notes, interest, lift, outdir, title=None, filename=
     LETTER = (f"<h2>This week's letter <span style='font:13px system-ui;color:#8a867d'>&middot; {e(lt['date'])}</span></h2>"
               f"<div class='tile' style='font-size:16px;line-height:1.6'>{'<br><br>'.join(e(p) for p in lt['text'].split(chr(10) + chr(10)))}</div>"
               if lt else "")
-    NAV = ("<p class='nav'><a href='index.html'>Live paper run</a> &middot; <a href='backtest.html'>12-month backtest</a> &middot; <a href='dials.html'>Dials</a></p>"
+    NAV = ("<p class='nav'><a href='index.html'>Live paper run</a> &middot; <a href='backtest.html'>12-month backtest</a> &middot; <a href='dials.html'>Dials</a> &middot; <a href='rocket.html'>Rocket</a></p>"
            if os.environ.get("HUNTER_SITE") else "")
     live_mode = cfg.get("broker_mode", "simulated") != "simulated"
     MODE = ("" if not live_mode else
