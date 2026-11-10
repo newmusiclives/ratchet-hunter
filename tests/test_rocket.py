@@ -16,7 +16,9 @@ from ledger import Ledger  # noqa: E402
 
 def cfg(tmp):
     c = hunter.load_cfg()
-    c.update(ai_review=False, data_dir=str(Path(tmp) / "data"), report_dir=str(Path(tmp) / "reports"))
+    c.update(ai_review=False, data_dir=str(Path(tmp) / "data"), report_dir=str(Path(tmp) / "reports"),
+             trading_enabled=False, rocket_budget_share=None)
+    c["engines"] = dict(c["engines"], rocket=True)
     return c
 
 
