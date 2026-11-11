@@ -1,3 +1,4 @@
 ticker,company,engine,shares,price_paid,cost,payout_price,opened,closed,proceeds,pnl,status,tender_status,expiration,url,note
 ULBI,ULTRALIFE CORP,takeover,255,15.66,3993.3,16.0,2026-11-07,,,,open,assumed,2026-12-03,https://www.sec.gov/Archives/edgar/data/875657/000119312526435071/d153599dex99a1d.htm,
 VREX,Varex Imaging Corp,merger,93,18.44,1714.92,18.9,2026-11-07,,,,open,not needed,2027-01-19,https://www.sec.gov/Archives/edgar/data/1681622/000110465926109351/tm2622593-5_defm14a.htm,Shareholder vote 2026-10-28; expected close 2027-01-19
+SPY Nov27 945C,"SPDR S&P 500 ETF, 1-year call option",rocket,100,5.4525,545.25,944.8992,2026-11-11,,,,open,not needed,2027-11-11,,S&P upside: pays SPY minus $944.90 per share on 100 shares at expiry; most it can lose is the premium.
